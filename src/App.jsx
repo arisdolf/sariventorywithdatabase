@@ -19,10 +19,11 @@ export default function App() {
   const [cart, setCart] = useState([])
   const [modal, setModal] = useState(null)
   const [msg, setMsg] = useState('')
-  const [user, setUser] = useState(() => {
-    try { return localStorage.getItem('token') ? JSON.parse(localStorage.getItem('user')) : null }
-    catch { return null }
-  })
+  const [user, setUser] = useState({
+  name: 'Admin',
+  perms: ['history', 'products', 'sell', 'stock', 'suppliers', 'team'],
+  store: 'Sari Store'
+})
 
   const toast = m => { setMsg(m); setTimeout(() => setMsg(''), 2500) }
   const refresh = () => api('/data').then(setD).catch(e => toast(e.message || 'Cannot reach the server. Is php artisan serve running?'))
