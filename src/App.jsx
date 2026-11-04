@@ -52,7 +52,7 @@ export default function App() {
     catch (e) { toast(e.message); return false }
   }
 
-  if (!user) return <Dashboard D={D} run={run} toast={toast} setModal={setModal} user={{ name: 'Admin', perms: ['history', 'products', 'sell', 'stock', 'suppliers', 'team'] }} onLogout={logout} />
+  
 
   const me = D.me || user
   const perms = me.perms || []
