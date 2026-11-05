@@ -11,7 +11,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'first_name', 'middle_name', 'last_name', 'email', 'birthdate', 'password_hash', 'role', 'store_id'])]
+#[Fillable(['name', 'first_name', 'middle_name', 'last_name', 'email', 'birthdate', 'password_hash', 'role', 'store_id', 'terms_accepted_at'])]
 #[Hidden(['password_hash', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -41,20 +41,22 @@ class User extends Authenticatable
     }
 
     // What the React app is allowed to know about the logged-in user
-    public function toClient(): array
+       public function toClient(): array
     {
+        $s = DB::table('stores')->where('store_id', $this->store_id)->first(['name', 'store_type']);
         return [
             'id' => $this->getKey(),
             'name' => $this->name,
             'email' => $this->email,
             'role' => $this->role,
-            'birthdate' => $this->birthdate,
             'age' => $this->birthdate?->age,
             'roleLabel' => self::ROLES[$this->role][0] ?? $this->role,
-            'store' => DB::table('stores')->where('store_id', $this->store_id)->value('name'),
+            'store' => $s->name ?? null,
+            'storeType' => $s->store_type ?? null,
             'perms' => $this->perms(),
         ];
     }
+  
 
     public function getAuthPassword()
     {

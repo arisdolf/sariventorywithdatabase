@@ -6,11 +6,11 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-
+use Illuminate\Validation\Rule;
 class AuthController extends Controller
 {
     const JOIN_ROLE = 'cashier'; // role everyone gets when joining with a code
-
+    const STORE_TYPES = ['sari_sari', 'small_business', 'street_vendor', 'mini_grocery', 'food_stall', 'online_seller', 'other'];
     public static function makeCode(): string
     {
         do {
@@ -24,6 +24,33 @@ class AuthController extends Controller
         return ['token' => $user->createToken('web')->plainTextToken, 'user' => $user->toClient()];
     }
 
+        public function rejoin(Request $r)
+    {
+        $v = $r->validate(['email' => 'required|email', 'password' => 'required', 'code' => 'required|string|max:20']);
+        $user = User::where('email', $v['email'])->first();
+
+        if (!$user || !Hash::check($v['password'], $user->getAuthPassword())) {
+            return response()->json(['message' => 'Wrong email or password'], 401);
+        }
+                if ($user->store_id) {
+            $isOwner = DB::table('stores')
+                ->where('store_id', $user->store_id)
+                ->where('owner_id', $user->getKey())
+                ->exists();
+
+            return response()->json([
+                'message' => $isOwner
+                    ? "Store owners can't join other stores."
+                    : 'You already belong to a store. Ask its owner to remove you first.',
+            ], 422);
+        }
+        $store = DB::table('stores')->where('join_code', strtoupper(trim($v['code'])))->first();
+        if (!$store) return response()->json(['message' => 'That store code does not exist'], 422);
+
+        $user->forceFill(['store_id' => $store->store_id, 'role' => self::JOIN_ROLE])->save();
+        return $this->session($user->fresh());
+    }
+
     public function login(Request $r)
     {
         $v = $r->validate(['email' => 'required|email', 'password' => 'required']);
@@ -32,8 +59,11 @@ class AuthController extends Controller
         if (!$user || !Hash::check($v['password'], $user->getAuthPassword())) {
             return response()->json(['message' => 'Wrong email or password'], 401);
         }
-        if (!$user->store_id) {
-            return response()->json(['message' => 'This account is no longer part of a store'], 403);
+               if (!$user->store_id) {
+            return response()->json([
+                'message' => 'Your account is not in a store yet.',
+                'needs_store' => true,
+            ], 403);
         }
         return $this->session($user);
     }
@@ -50,7 +80,10 @@ class AuthController extends Controller
             'store_name' => 'required_if:mode,create|nullable|string|max:120',
             'birthdate' => 'required|date|before:today|after:1900-01-01',
             'code' => 'required_if:mode,join|nullable|string|max:20',
-        ]);
+             'store_type' => ['required_if:mode,create', 'nullable', Rule::in(self::STORE_TYPES)],
+            'accept_terms' => 'accepted',
+        ],
+        ['accept_terms.accepted' => 'Please agree to the Terms and Conditions']);
 
         $store = null;
         if ($v['mode'] === 'join') {
@@ -60,13 +93,19 @@ class AuthController extends Controller
 
         $user = DB::transaction(function () use ($v, $store) {
             if ($v['mode'] === 'create') {
-                $sid = DB::table('stores')->insertGetId(['name' => $v['store_name'], 'join_code' => self::makeCode()]);
-                $role = 'owner';
+    $sid = DB::table('stores')->insertGetId([
+    'name' => $v['store_name'], 'join_code' => self::makeCode(), 'store_type' => $v['store_type'],
+]);
+    foreach (['Beverages', 'Snacks', 'Canned Goods', 'Household'] as $c) {
+        DB::table('categories')->insert(['store_id' => $sid, 'name' => $c]);
+    }
+            $role = 'owner';
             } else {
                 $sid = $store->store_id;
                 $role = self::JOIN_ROLE;
             }
             $u = User::create([
+                    'terms_accepted_at' => now(),
     'first_name'    => trim($v['first_name']),
     'middle_name'   => trim($v['middle_name'] ?? '') ?: null,
     'last_name'     => trim($v['last_name']),

@@ -38,7 +38,7 @@ export default function Nav({ view, setView, perms = [], store, onLogout }) {
     <>
       {/* Desktop sidebar */}
       <nav className="side">
-        <div className="logo">Sari<span>-Store</span></div>
+        <div className="logo">Sari<span>ventory</span></div>
         {tabs.map(([k, long]) => (
           <button key={k} className={view === k ? 'on' : ''} onClick={() => go(k)}>
             <Icon n={k} /><span>{long}</span>
@@ -47,8 +47,7 @@ export default function Nav({ view, setView, perms = [], store, onLogout }) {
         <button className="out" onClick={onLogout}><Icon n="out" /><span>Log out</span></button>
       </nav>
 
-      {/* Mobile top bar */}
-      <div className="top"><b>{store || 'Sari-Store'}</b></div>
+    
 
       {/* Mobile floating tab bar */}
       <div className="tabbar">

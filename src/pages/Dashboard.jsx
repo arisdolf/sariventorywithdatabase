@@ -4,7 +4,7 @@ import { peso } from '../utils/format'
 const row = { display: 'flex', justifyContent: 'space-between', padding: '6px 0' }
 
 export default function Dashboard({ D, user, onLogout }) {
-  const low = D.products.filter(p => p.qty <= 10)
+  const low = D.products.filter(p => p.qty <= (p.low_stock ?? 10))
   const t = D.today || { sales: 0, cost: 0, items: 0, orders: 0 }
   const costs = user?.perms?.includes('costs')
   const today = new Date().toDateString()

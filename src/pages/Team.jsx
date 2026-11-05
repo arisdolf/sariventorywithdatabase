@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import Empty from '../components/Empty'
 import { api } from '../services/api'
-
+import { PageSkeleton } from '../components/Skeleton'
 const PERM = {
   sell: 'make sales', products: 'manage products', stock: 'add stock',
   suppliers: 'manage suppliers', costs: 'see capital and profit', team: 'manage the team',
@@ -24,7 +24,7 @@ export default function Team({ user, toast }) {
     if (confirm('Remove ' + m.name + ' from the store?')) act(() => api('/team/' + m.id, 'DELETE'), 'Member removed')
   }
 
-  if (!t) return <><h1>Team</h1><p className="sub">Loading…</p></>
+if (!t) return <><h1>Team</h1><PageSkeleton title={false} stats={false} cards={4} /></>
 
   return (
     <>

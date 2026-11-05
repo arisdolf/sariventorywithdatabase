@@ -1,0 +1,78 @@
+/* ===== Design tokens, reset, typography ===== */
+
+:root {
+  --bg: #fff;
+  --panel: #f7f8f8;
+  --line: #e6e8e8;
+  --text: #17201f;
+  --mute: #667170;
+  --acc: #0f766e;
+  --accbg: #e6f4f2;
+  --on-acc: #fff;          /* text color on top of --acc */
+  --warn: #b45309;
+  --warnbg: #fef3e2;
+  --bad: #b91c1c;
+
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Dark mode: follows the phone/PC setting unless the page forces light */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #121615;
+    --panel: #1a1f1e;
+    --line: #2a3130;
+    --text: #eef2f1;
+    --mute: #9aa6a4;
+    --acc: #4fd1c5;
+    --accbg: #173431;
+    --on-acc: #0b1110;
+    --warn: #f5b04c;
+    --warnbg: #3a2a12;
+    --bad: #f87171;
+  }
+}
+
+/* Dark mode forced by data-theme="dark" */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121615;
+  --panel: #1a1f1e;
+  --line: #2a3130;
+  --text: #eef2f1;
+  --mute: #9aa6a4;
+  --acc: #4fd1c5;
+  --accbg: #173431;
+  --on-acc: #0b1110;
+  --warn: #f5b04c;
+  --warnbg: #3a2a12;
+  --bad: #f87171;
+}
+
+* { box-sizing: border-box }
+html { scroll-padding-top: env(safe-area-inset-top, 0px) }
+
+body {
+  margin: 0;
+  font: 15px/1.5 Figtree, system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  min-height: 100vh;
+}
+#root { display: contents }
+
+h1 { font-size: 24px; margin: 0 0 4px }
+.sub { color: var(--mute); margin: 0 0 22px }
+
+.logo { font-weight: 700; font-size: 19px; padding: 0 10px 18px }
+.logo span { color: var(--acc) }
+
+@media (max-width: 760px) {
+  body { display: block }
+  h1 { font-size: 22px }
+  .sub { margin-bottom: 16px }
+}

@@ -20,17 +20,21 @@ class StoreController extends Controller
         return $sid;
     }
 
-    private function log($sid, $pid, $type, $qty, $remarks, $refId = null, $refType = null)
+        private function log($sid, $pid, $type, $qty, $remarks, $refId = null, $refType = null)
     {
         DB::table('stock_movements')->insert([
-            'store_id' => $sid, 'product_id' => $pid, 'type' => $type, 'quantity' => $qty,
+            'store_id' => $sid, 'user_id' => request()->user()?->getKey(),
+            'product_id' => $pid, 'type' => $type, 'quantity' => $qty,
             'remarks' => $remarks, 'reference_id' => $refId, 'reference_type' => $refType,
         ]);
     }
 
-    private function catId($name)
+        private function catId($name, $sid)
     {
-        return DB::table('categories')->where('name', $name)->value('category_id');
+        $name = trim((string) $name);
+        if ($name === '') return null;
+        $id = DB::table('categories')->where('store_id', $sid)->where('name', $name)->value('category_id');
+        return $id ?: DB::table('categories')->insertGetId(['store_id' => $sid, 'name' => $name]);
     }
 
     public function data(Request $r)
@@ -38,7 +42,7 @@ class StoreController extends Controller
         $u = $r->user();
         $sid = $this->sid($r);
 
-        $products = DB::select("SELECT p.product_id id, p.name, COALESCE(c.name,'') cat,
+                        $products = DB::select("SELECT p.product_id id, p.name, p.description, p.low_stock, COALESCE(c.name,'') cat,
                 CAST(p.cost_price AS DOUBLE) cost_price, CAST(p.unit_price AS DOUBLE) price, p.stock_quantity qty
             FROM products p LEFT JOIN categories c ON c.category_id = p.category_id
             WHERE p.is_active = 1 AND p.store_id = ? ORDER BY p.name", [$sid]);
@@ -60,21 +64,28 @@ class StoreController extends Controller
         return [
             'me' => $u->toClient(),
             'products' => $products,
-            'suppliers' => DB::select("SELECT supplier_id id, name, contact_person contact, phone
+                        'categories' => DB::select("SELECT category_id id, name FROM categories WHERE store_id = ? ORDER BY name", [$sid]),
+            'suppliers' => DB::select("SELECT supplier_id id, name, contact_person contact, phone, email, address
                 FROM suppliers WHERE store_id = ? ORDER BY name", [$sid]),
             'orders' => DB::select("SELECT order_id id, CAST(total_amount AS DOUBLE) total, DATE_FORMAT(order_date,'%Y-%m-%dT%H:%i:%s') date
                                 FROM orders WHERE store_id = ? AND status = 'completed' ORDER BY order_id DESC LIMIT 50", [$sid]),
-            'moves' => DB::select("SELECT movement_id id, product_id pid, type, quantity qty, remarks, DATE_FORMAT(created_at,'%b %e, %Y %l:%i %p') at
-                FROM stock_movements WHERE store_id = ? ORDER BY movement_id DESC LIMIT 200", [$sid]),
+                        'moves' => DB::select("SELECT m.movement_id id, m.product_id pid, m.type, m.quantity qty, m.remarks,
+                    DATE_FORMAT(m.created_at,'%b %e, %Y %l:%i %p') at, COALESCE(u.name,'') who
+                FROM stock_movements m LEFT JOIN users u ON u.user_id = m.user_id
+                WHERE m.store_id = ? ORDER BY m.movement_id DESC LIMIT 200", [$sid]),
+                            'archived' => DB::select("SELECT product_id id, name FROM products
+                WHERE is_active = 0 AND store_id = ? ORDER BY name", [$sid]),
             'today' => $today,
         ];
     }
 
-    public function storeProduct(Request $r)
+        public function storeProduct(Request $r)
     {
         $sid = $this->need($r, 'products');
         $v = $r->validate([
-            'name' => 'required|string|max:120', 'cat' => 'nullable|string',
+            'low_stock' => 'nullable|integer|min:0',
+            'name' => 'required|string|max:120', 'description' => 'nullable|string|max:500',
+            'cat' => 'nullable|string|max:80',
             'cost_price' => 'nullable|numeric|min:0',
             'price' => 'required|numeric|min:0',
             'qty' => 'required|integer|min:0',
@@ -84,7 +95,9 @@ class StoreController extends Controller
 
         DB::transaction(function () use ($v, $sid, $cost) {
             $id = DB::table('products')->insertGetId([
-                'store_id' => $sid, 'name' => $v['name'], 'category_id' => $this->catId($v['cat'] ?? ''),
+                'low_stock' => $v['low_stock'] ?? 10,
+                'store_id' => $sid, 'name' => $v['name'], 'description' => $v['description'] ?? null,
+                'category_id' => $this->catId($v['cat'] ?? '', $sid),
                 'cost_price' => $cost, 'unit_price' => $v['price'], 'stock_quantity' => $v['qty'],
             ]);
             if ($v['qty'] > 0) $this->log($sid, $id, 'IN', $v['qty'], 'Opening stock');
@@ -96,7 +109,9 @@ class StoreController extends Controller
     {
         $sid = $this->need($r, 'products');
         $v = $r->validate([
-            'name' => 'required|string|max:120', 'cat' => 'nullable|string',
+            'low_stock' => 'nullable|integer|min:0',
+            'name' => 'required|string|max:120', 'description' => 'nullable|string|max:500',
+            'cat' => 'nullable|string|max:80',
             'cost_price' => 'nullable|numeric|min:0',
             'price' => 'required|numeric|min:0',
             'qty' => 'required|integer|min:0',
@@ -111,7 +126,9 @@ class StoreController extends Controller
 
         DB::transaction(function () use ($v, $mine, $old, $canCost, $cost, $sid, $id) {
             $row = [
-                'name' => $v['name'], 'category_id' => $this->catId($v['cat'] ?? ''),
+                'low_stock' => $v['low_stock'] ?? 10,
+                'name' => $v['name'], 'description' => $v['description'] ?? null,
+                'category_id' => $this->catId($v['cat'] ?? '', $sid),
                 'unit_price' => $v['price'], 'stock_quantity' => $v['qty'],
             ];
             if ($canCost) $row['cost_price'] = $cost;
@@ -140,21 +157,54 @@ class StoreController extends Controller
 
         DB::transaction(function () use ($v, $mine, $sid) {
             $mine->increment('stock_quantity', $v['qty']);
-            $this->log($sid, $v['product_id'], 'IN', $v['qty'], $v['remarks'] ?: 'Restock');
+            $this->log($sid, $v['product_id'], 'IN', $v['qty'], ($v['remarks'] ?? '') ?: 'Restock');
         });
         return ['ok' => true];
     }
 
-    public function sale(Request $r)
+        public function removeStock(Request $r)
+    {
+        $sid = $this->need($r, 'stock');
+        $v = $r->validate([
+            'product_id' => 'required|integer',
+            'qty' => 'required|integer|min:1',
+            'reason' => 'required|in:damaged,expired,lost,other',
+            'remarks' => 'nullable|string|max:200',
+        ]);
+
+        DB::transaction(function () use ($v, $sid) {
+            $p = DB::table('products')->where('product_id', $v['product_id'])->where('store_id', $sid)->lockForUpdate()->first();
+            abort_unless($p, 404, 'Product not found');
+            abort_if($p->stock_quantity < $v['qty'], 422, 'Only ' . $p->stock_quantity . ' in stock');
+
+            DB::table('products')->where('product_id', $p->product_id)->decrement('stock_quantity', $v['qty']);
+            $note = ucfirst($v['reason']) . (!empty($v['remarks']) ? ': ' . $v['remarks'] : '');
+            $this->log($sid, $p->product_id, 'OUT', $v['qty'], $note, null, 'removal');
+        });
+        return ['ok' => true];
+    }
+
+    public function restoreProduct(Request $r, $id)
+    {
+        $sid = $this->need($r, 'products');
+        $p = DB::table('products')->where('product_id', $id)->where('store_id', $sid)->where('is_active', 0);
+        abort_unless($p->exists(), 404, 'Product not found');
+        $p->update(['is_active' => 1]);
+        return ['ok' => true];
+    }
+    
+        public function sale(Request $r)
     {
         $sid = $this->need($r, 'sell');
         $v = $r->validate([
             'items' => 'required|array|min:1',
             'items.*.id' => 'required|integer',
             'items.*.qty' => 'required|integer|min:1',
+            'method' => 'required|in:cash,gcash,maya,other',
+            'amount_paid' => 'nullable|numeric|min:0',
         ]);
 
-        DB::transaction(function () use ($v, $r, $sid) {
+        $orderId = DB::transaction(function () use ($v, $r, $sid) {
             $orderId = DB::table('orders')->insertGetId([
                 'store_id' => $sid, 'user_id' => $r->user()->getKey(),
                 'status' => 'completed', 'total_amount' => 0,
@@ -176,10 +226,18 @@ class StoreController extends Controller
                 DB::table('products')->where('product_id', $p->product_id)->decrement('stock_quantity', $i['qty']);
                 $this->log($sid, $p->product_id, 'OUT', $i['qty'], 'Sale #' . $orderId, $orderId, 'order');
             }
-            DB::table('orders')->where('order_id', $orderId)->update(['total_amount' => $total]);
+
+            $paid = $v['method'] === 'cash' ? ($v['amount_paid'] ?? null) : $total;
+            abort_if($v['method'] === 'cash' && ($paid === null || round($paid, 2) < round($total, 2)),
+                422, 'Cash received is less than the total');
+
+            DB::table('orders')->where('order_id', $orderId)->update([
+                'total_amount' => $total, 'payment_method' => $v['method'], 'amount_paid' => $paid,
+            ]);
+            return $orderId;
         });
 
-        return ['ok' => true];
+        return ['ok' => true, 'order_id' => $orderId];
     }
 
         public function sales(Request $r)
@@ -187,11 +245,11 @@ class StoreController extends Controller
         $u = $r->user();
         $sid = $this->need($r, 'history');
 
-        $orders = DB::select("SELECT o.order_id id, o.status, CAST(o.total_amount AS DOUBLE) total,
+                $orders = DB::select("SELECT o.order_id id, o.status, CAST(o.total_amount AS DOUBLE) total,
+                o.payment_method method, CAST(o.amount_paid AS DOUBLE) paid,
                 DATE_FORMAT(o.order_date,'%b %e, %Y %l:%i %p') at, COALESCE(u.name,'') cashier
             FROM orders o LEFT JOIN users u ON u.user_id = o.user_id
             WHERE o.store_id = ? ORDER BY o.order_id DESC LIMIT 100", [$sid]);
-        if (!$orders) return [];
 
         $ids = array_column($orders, 'id');
         $in = implode(',', array_fill(0, count($ids), '?'));
@@ -228,14 +286,63 @@ class StoreController extends Controller
         return ['ok' => true];
     }
 
-    public function storeSupplier(Request $r)
+        public function storeSupplier(Request $r)
     {
         $sid = $this->need($r, 'suppliers');
-        $v = $r->validate(['name' => 'required|string|max:120', 'contact' => 'nullable|string', 'phone' => 'nullable|string']);
-        DB::table('suppliers')->insert([
-            'store_id' => $sid, 'name' => $v['name'],
-            'contact_person' => $v['contact'] ?? null, 'phone' => $v['phone'] ?? null,
+        $v = $r->validate([
+            'name' => 'required|string|max:120', 'contact' => 'nullable|string|max:100',
+            'phone' => 'nullable|string|max:30', 'email' => 'nullable|email|max:120', 'address' => 'nullable|string|max:255',
         ]);
+        DB::table('suppliers')->insert([
+            'store_id' => $sid, 'name' => $v['name'], 'contact_person' => $v['contact'] ?? null,
+            'phone' => $v['phone'] ?? null, 'email' => $v['email'] ?? null, 'address' => $v['address'] ?? null,
+        ]);
+        return ['ok' => true];
+    }
+
+    public function updateSupplier(Request $r, $id)
+    {
+        $sid = $this->need($r, 'suppliers');
+        $v = $r->validate([
+            'name' => 'required|string|max:120', 'contact' => 'nullable|string|max:100',
+            'phone' => 'nullable|string|max:30', 'email' => 'nullable|email|max:120', 'address' => 'nullable|string|max:255',
+        ]);
+        $n = DB::table('suppliers')->where('supplier_id', $id)->where('store_id', $sid)->update([
+            'name' => $v['name'], 'contact_person' => $v['contact'] ?? null,
+            'phone' => $v['phone'] ?? null, 'email' => $v['email'] ?? null, 'address' => $v['address'] ?? null,
+        ]);
+        abort_unless($n !== null, 404, 'Supplier not found');
+        return ['ok' => true];
+    }
+
+    public function storeCategory(Request $r)
+    {
+        $sid = $this->need($r, 'products');
+        $v = $r->validate(['name' => 'required|string|max:80']);
+        $name = trim($v['name']);
+        abort_if(DB::table('categories')->where('store_id', $sid)->where('name', $name)->exists(), 422, 'That category already exists');
+        DB::table('categories')->insert(['store_id' => $sid, 'name' => $name]);
+        return ['ok' => true];
+    }
+
+    public function updateCategory(Request $r, $id)
+    {
+        $sid = $this->need($r, 'products');
+        $v = $r->validate(['name' => 'required|string|max:80']);
+        $name = trim($v['name']);
+        abort_unless(DB::table('categories')->where('category_id', $id)->where('store_id', $sid)->exists(), 404, 'Category not found');
+        abort_if(DB::table('categories')->where('store_id', $sid)->where('name', $name)->where('category_id', '!=', $id)->exists(), 422, 'That category already exists');
+        DB::table('categories')->where('category_id', $id)->update(['name' => $name]);
+        return ['ok' => true];
+    }
+
+    public function destroyCategory(Request $r, $id)
+    {
+        $sid = $this->need($r, 'products');
+        abort_unless(DB::table('categories')->where('category_id', $id)->where('store_id', $sid)->exists(), 404, 'Category not found');
+        $used = DB::table('products')->where('category_id', $id)->where('is_active', 1)->count();
+        abort_if($used > 0, 422, "$used product(s) still use this category. Move them first.");
+        DB::table('categories')->where('category_id', $id)->delete();
         return ['ok' => true];
     }
 

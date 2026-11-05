@@ -12,9 +12,12 @@ import Suppliers from './pages/Suppliers'
 import Team from './pages/Team'
 import Sales from './pages/Sales'
 import Profile from './pages/Profile'
+import { PageSkeleton } from './components/Skeleton'
+
 const EMPTY = { products: [], suppliers: [], orders: [], moves: [] }
 
 export default function App() {
+    const [loading, setLoading] = useState(true)
   const [D, setD] = useState(EMPTY)
   const [view, setView] = useState('dash')
   const [cart, setCart] = useState([])
@@ -26,7 +29,7 @@ export default function App() {
   })
 
   const toast = m => { setMsg(m); setTimeout(() => setMsg(''), 2500) }
-  const refresh = () => api('/data').then(setD).catch(e => toast(e.message || 'Cannot reach the server. Is php artisan serve running?'))
+    const refresh = () => api('/data').then(setD).catch(e => toast(e.message || 'Cannot reach the server. Is php artisan serve running?')).finally(() => setLoading(false))
 
   useEffect(() => { if (user) refresh() }, [user])
   useEffect(() => {
@@ -70,18 +73,21 @@ export default function App() {
   const page = allowed[view] ? view : 'dash'
 
   const shared = { D, run, toast, setModal, user: me, onLogout: logout }
+    const busy = loading && ['dash', 'prod', 'sale', 'stock', 'sup'].includes(page)
   return (
+    
     <>
       <Nav view={page} setView={setView} perms={perms} store={me.store} onLogout={logout} />
-      <main>
+            <main>
+        {busy && <PageSkeleton />}
         {page === 'profile' && <Profile {...shared} />}
-        {page === 'dash' && <Dashboard {...shared} />}
-        {page === 'prod' && <Products {...shared} />}
-        {page === 'sale' && <NewSale {...shared} cart={cart} setCart={setCart} />}
         {page === 'sales' && <Sales {...shared} />}
-        {page === 'stock' && <StockMovements {...shared} />}
-        {page === 'sup' && <Suppliers {...shared} />}
         {page === 'team' && <Team {...shared} />}
+        {!busy && page === 'dash' && <Dashboard {...shared} />}
+        {!busy && page === 'prod' && <Products {...shared} />}
+        {!busy && page === 'sale' && <NewSale {...shared} cart={cart} setCart={setCart} />}
+        {!busy && page === 'stock' && <StockMovements {...shared} />}
+        {!busy && page === 'sup' && <Suppliers {...shared} />}
       </main>
       {modal && <Modal {...modal} onSave={modal.save} onClose={() => setModal(null)} />}
       <Toast msg={msg} />

@@ -1,14 +1,52 @@
 <?php
 
 namespace App\Http\Controllers;
-
+use Illuminate\Support\Str;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class ProfileController extends Controller
-{
+{   
+        public function destroy(Request $r)
+    {
+        $v = $r->validate(['password' => 'required|string', 'confirm' => 'required|in:DELETE']);
+        $u = $r->user();
+        if (!Hash::check($v['password'], $u->getAuthPassword())) {
+            return response()->json(['message' => 'Your password is wrong'], 422);
+        }
+
+        $id = $u->getKey();
+        $sid = $u->store_id;
+        $isOwner = $sid && DB::table('stores')->where('store_id', $sid)->where('owner_id', $id)->exists();
+
+        if ($isOwner && DB::table('users')->where('store_id', $sid)->where('user_id', '!=', $id)->exists()) {
+            return response()->json(['message' => 'Remove your team members first (Team page). Deleting the store would lock them out.'], 422);
+        }
+
+        DB::transaction(function () use ($id, $sid, $isOwner) {
+            if ($isOwner) { // the owner leaving takes the whole store with them
+                DB::table('orders')->where('store_id', $sid)->delete(); // order items go with them
+                DB::table('stock_movements')->where('store_id', $sid)->delete();
+                DB::table('products')->where('store_id', $sid)->delete();
+                DB::table('suppliers')->where('store_id', $sid)->delete();
+                DB::table('categories')->where('store_id', $sid)->delete();
+                DB::table('stores')->where('store_id', $sid)->delete();
+            }
+            DB::table('profiles')->where('user_id', $id)->delete();
+            DB::table('personal_access_tokens')->where('tokenable_type', User::class)->where('tokenable_id', $id)->delete();
+
+            // Anonymize instead of deleting the row, so sales this person made keep working
+            DB::table('users')->where('user_id', $id)->update([
+                'name' => 'Deleted user', 'first_name' => 'Deleted', 'middle_name' => null, 'last_name' => 'user',
+                'email' => "deleted-$id@deleted.invalid", 'password_hash' => Hash::make(Str::random(40)),
+                'birthdate' => '1900-01-01', 'store_id' => null, 'role' => 'viewer',
+            ]);
+        });
+        return ['ok' => true];
+    }
+    
     public function show(Request $r)
     {
         $id = $r->user()->getKey();

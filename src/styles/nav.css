@@ -1,0 +1,111 @@
+/* ===== Navigation: desktop sidebar, mobile tab bar, "More" sheet ===== */
+
+/* Icons (shared) */
+.ic { width: 20px; height: 20px; flex: none; display: inline-flex }
+.ic svg {
+  width: 100%; height: 100%;
+  fill: none; stroke: currentColor; stroke-width: 1.9;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+
+/* --- Desktop sidebar --- */
+nav.side {
+  width: 220px;
+  border-right: 1px solid var(--line);
+  padding: 20px 12px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  flex: none;
+}
+nav.side button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: none;
+  color: var(--mute);
+  font: 500 15px Figtree, sans-serif;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+nav.side button:hover { background: var(--panel) }
+nav.side button.on { background: var(--accbg); color: var(--acc); font-weight: 600 }
+nav.side button.out { margin-top: 16px; border: 1px solid var(--line) }
+
+/* --- Mobile pieces (hidden on desktop) --- */
+.tabbar, .sheet, .scrim { display: none }
+
+@keyframes fade { from { opacity: 0 } to { opacity: 1 } }
+@keyframes up { from { transform: translateY(100%) } to { transform: none } }
+
+@media (max-width: 760px) {
+  nav.side { display: none }
+
+  /* Floating tab bar */
+  .tabbar {
+    display: flex;
+    position: fixed;
+    left: 12px; right: 12px;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    z-index: 4;
+    gap: 2px;
+    padding: 6px;
+    background: color-mix(in srgb, var(--bg) 85%, transparent);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .16);
+  }
+  .tabbar button {
+    flex: 1;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    border: 0; background: none;
+    color: var(--mute);
+    font: 600 11px Figtree, sans-serif;
+    padding: 8px 0 6px;
+    min-height: 54px;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: background .2s, color .2s;
+  }
+  .tabbar button .ic { width: 24px; height: 24px; transition: transform .2s }
+  .tabbar button.on { background: var(--accbg); color: var(--acc) }
+  .tabbar button.on .ic { transform: translateY(-1px) scale(1.1) }
+  .tabbar button:active { transform: scale(.95) }
+
+  /* "More" sheet */
+  .scrim {
+    display: block;
+    position: fixed; inset: 0; z-index: 7;
+    background: rgba(0, 0, 0, .4);
+    animation: fade .2s;
+  }
+  .sheet {
+    display: block;
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 8;
+    background: var(--bg);
+    border-radius: 24px 24px 0 0;
+    padding: 10px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, .2);
+    animation: up .25s ease-out;
+  }
+  .grab { width: 40px; height: 4px; border-radius: 4px; background: var(--line); margin: 4px auto 16px }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px }
+  .tile {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    min-height: 92px; padding: 12px 6px;
+    border: 1px solid var(--line); border-radius: 16px;
+    background: var(--panel); color: var(--text);
+    font: 600 13px Figtree, sans-serif; text-align: center;
+    cursor: pointer;
+  }
+  .tile .ic { width: 26px; height: 26px; color: var(--acc) }
+  .tile.on { background: var(--accbg); border-color: var(--acc) }
+  .tile.danger, .tile.danger .ic { color: var(--bad) }
+  .tile:active { transform: scale(.96) }
+}

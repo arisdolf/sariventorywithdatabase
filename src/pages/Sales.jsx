@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import Empty from '../components/Empty'
 import { api } from '../services/api'
 import { peso } from '../utils/format'
-
+import Receipt from '../components/Receipt'
+import { PageSkeleton } from '../components/Skeleton'
 const row = { display: 'flex', justifyContent: 'space-between', gap: 12, padding: '4px 0' }
 
 export default function Sales({ run, toast, user }) {
@@ -10,7 +11,7 @@ export default function Sales({ run, toast, user }) {
   const [open, setOpen] = useState(null)
   const canVoid = user?.perms?.includes('void')
   const costs = user?.perms?.includes('costs')
-
+  const [rc, setRc] = useState(null)
   const load = () => api('/sales').then(setList).catch(e => toast(e.message))
   useEffect(() => { load() }, [])
 
@@ -20,7 +21,7 @@ export default function Sales({ run, toast, user }) {
     if (ok) load()
   }
 
-  if (!list) return <><h1>Sales history</h1><p className="sub">Loading…</p></>
+if (!list) return <><h1>Sales history</h1><PageSkeleton title={false} stats={false} cards={5} /></>
 
   return (
     <>
@@ -43,6 +44,12 @@ export default function Sales({ run, toast, user }) {
                 <div key={k} style={row}><span>{i.qty} × {i.name}</span><span>{peso(i.price * i.qty)}</span></div>
               ))}
               {costs && !voided && <div style={{ ...row, color: 'var(--mute)' }}><span>Profit</span><span>{peso(profit)}</span></div>}
+                {!voided && (
+                <button className="btn ghost sm" style={{ marginTop: 10, marginRight: 8 }}
+                  onClick={() => setRc({ store: user?.store, id: s.id, at: s.at, cashier: s.cashier, items: s.items, total: s.total, method: s.method, paid: s.paid })}>
+                  Print receipt
+                </button>
+              )}
               {canVoid && !voided && (
                 <button className="btn ghost sm" style={{ marginTop: 10 }} onClick={() => voidSale(s)}>Void this sale</button>
               )}
@@ -50,6 +57,7 @@ export default function Sales({ run, toast, user }) {
           </div>
         )
       }) : <Empty>No sales yet.</Empty>}
+            {rc && <Receipt r={rc} onClose={() => setRc(null)} />}
     </>
   )
 }

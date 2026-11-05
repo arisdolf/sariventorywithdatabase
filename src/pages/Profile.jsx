@@ -1,24 +1,29 @@
 import { useEffect, useState } from 'react'
 import { api } from '../services/api'
-
+import { PageSkeleton } from '../components/Skeleton'
 export default function Profile({ D, run, toast, user }) {
   const [f, setF] = useState(null)
   const [pw, setPw] = useState({ current_password: '', new_password: '', confirm: '' })
   const [store, setStore] = useState(user?.store || '')
   const isOwner = user?.perms?.includes('team')
+    const [dp, setDp] = useState('')
+  const [dc, setDc] = useState('')
   const set = k => e => setF({ ...f, [k]: e.target.value })
-
-  useEffect(() => {
-    api('/profile').then(d => setF(Object.fromEntries(Object.entries(d).map(([k, v]) => [k, v ?? '']))))
-      .catch(e => toast(e.message))
+   const [orig, setOrig] = useState(null)
+    useEffect(() => {
+    api('/profile').then(d => {
+      const clean = Object.fromEntries(Object.entries(d).map(([k, v]) => [k, v ?? '']))
+      setF(clean); setOrig(clean)
+    }).catch(e => toast(e.message))
   }, [])
   useEffect(() => { setStore(user?.store || '') }, [user?.store])
 
-  if (!f) return <><h1>Profile</h1><p className="sub">Loading…</p></>
-
-  const save = e => {
+if (!f) return <><h1>Profile</h1><PageSkeleton title={false} stats={false} cards={3} /></>
+    const dirty = JSON.stringify(f) !== JSON.stringify(orig)
+   const save = async e => {
     e.preventDefault()
-    run(() => api('/profile', 'PUT', f), 'Profile saved')
+    const ok = await run(() => api('/profile', 'PUT', f), 'Profile saved')
+    if (ok) setOrig(f)
   }
   const changePw = async e => {
     e.preventDefault()
@@ -31,6 +36,15 @@ export default function Profile({ D, run, toast, user }) {
   const rename = e => {
     e.preventDefault()
     run(() => api('/store', 'PUT', { name: store }), 'Store renamed')
+  }
+
+    const del = async e => {
+    e.preventDefault()
+    try {
+      await api('/account', 'DELETE', { password: dp, confirm: dc })
+      localStorage.removeItem('token'); localStorage.removeItem('user')
+      window.dispatchEvent(new Event('logout'))
+    } catch (x) { toast(x.message) }
   }
 
   return (
@@ -50,7 +64,7 @@ export default function Profile({ D, run, toast, user }) {
         <input disabled value={f.email} style={{ width: '100%' }} />
         <label>Birthdate</label>
         <input type="date" required max={new Date().toISOString().slice(0, 10)} value={f.birthdate} onChange={set('birthdate')} style={{ width: '100%' }} />
-        
+                <button className="btn" style={{ marginTop: 16 }} disabled={!dirty}>Save changes</button>
       </form>
 
       <form className="card" onSubmit={changePw} style={{ marginBottom: 20, maxWidth: 520 }}>
@@ -61,16 +75,31 @@ export default function Profile({ D, run, toast, user }) {
         <input type="password" required minLength={8} value={pw.new_password} onChange={e => setPw({ ...pw, new_password: e.target.value })} style={{ width: '100%' }} />
         <label>Confirm new password</label>
         <input type="password" required value={pw.confirm} onChange={e => setPw({ ...pw, confirm: e.target.value })} style={{ width: '100%' }} />
-        <button className="btn" style={{ marginTop: 16 }}>Change password</button>
+        <button className="btn" style={{ marginTop: 16 }} disabled={!pw.current_password || !pw.new_password || !pw.confirm}>Change password</button>
       </form>
 
       {isOwner && (
         <form className="card" onSubmit={rename} style={{ maxWidth: 520 }}>
           <h3>Store name</h3>
           <input required value={store} onChange={e => setStore(e.target.value)} style={{ width: '100%' }} />
-          <button className="btn" style={{ marginTop: 16 }}>Rename store</button>
+          <button className="btn" style={{ marginTop: 16 }} disabled={!store.trim() || store === user?.store}>Rename store</button>
         </form>
       )}
+
+            <form className="card danger-zone" onSubmit={del} style={{ marginTop: 20, maxWidth: 520 }}>
+        <h3>Delete account</h3>
+        <p style={{ color: 'var(--mute)', margin: '0 0 8px' }}>
+          {isOwner
+            ? 'This permanently deletes your store and all its products, sales and stock records. Remove your team first.'
+            : 'This removes your login and personal details. Sales you made stay in the store’s records, shown as “Deleted user”.'}
+        </p>
+        <label>Your password</label>
+        <input type="password" value={dp} onChange={e => setDp(e.target.value)} style={{ width: '100%' }} />
+        <label>Type DELETE to confirm</label>
+        <input value={dc} onChange={e => setDc(e.target.value)} style={{ width: '100%' }} />
+        <button className="btn danger" style={{ marginTop: 16 }} disabled={!dp || dc !== 'DELETE'}>Delete my account</button>
+      </form>
+      
     </>
   )
 }

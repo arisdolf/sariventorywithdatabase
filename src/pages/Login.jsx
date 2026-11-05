@@ -1,83 +1,136 @@
 import { useState } from 'react'
 import { api } from '../services/api'
+import Terms from '../components/Terms'
+import { STORE_TYPES } from '../utils/format'
+const TODAY = new Date().toISOString().slice(0, 10)
 
-const TITLES = {
-  login: 'Log in to manage your store.',
-  create: 'Set up your store. You will be its owner.',
-  join: 'Join a store with the code from its owner.',
+// Defined outside the page so inputs keep focus while typing
+function Shell({ title, sub, children }) {
+  return (
+    <div className="login-wrap">
+      <div className="login">
+        <div className="logo" style={{ padding: 0 }}>Sari<span>ventory</span></div>
+        <h2 className="auth-title">{title}</h2>
+        <p className="sub" style={{ marginBottom: 8 }}>{sub}</p>
+        {children}
+      </div>
+    </div>
+  )
 }
 
+const Field = ({ label, ...p }) => <><label>{label}</label><input {...p} /></>
+
 export default function Login({ onLogin }) {
-  const [mode, setMode] = useState('login') // login | create | join
-  const [f, setF] = useState({ first_name: '', middle_name: '', last_name: '', email: '', password: '', confirm: '', store_name: '', code: '', birthdate: '' })
+  const [showTerms, setShowTerms] = useState(false)
+  const [screen, setScreen] = useState('login') // login | signup
+  const [kind, setKind] = useState('create')     // create | join (signup only)
+  const [needStore, setNeedStore] = useState(false) // shown only when login says "no store"
+  const [f, setF] = useState({
+    first_name: '', middle_name: '', last_name: '', birthdate: '',
+    email: '', password: '', confirm: '', store_name: '', code: '',
+  })
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
-  const reg = mode !== 'login'
   const set = k => e => setF({ ...f, [k]: e.target.value })
+
+  const go = (s, store = false) => { setScreen(s); setErr(''); setNeedStore(store) }
 
   const submit = async e => {
     e.preventDefault()
     setErr('')
-    if (reg && f.password !== f.confirm) return setErr('Passwords do not match')
+    const signup = screen === 'signup'
+    if (signup && f.password !== f.confirm) return setErr('Passwords do not match')
+    if (signup && !f.terms) return setErr('Please agree to the Terms and Conditions')
     setBusy(true)
     try {
-      onLogin(await api(reg ? '/register' : '/login', 'POST',
-        reg ? { mode, first_name: f.first_name, middle_name: f.middle_name, last_name: f.last_name, email: f.email, password: f.password, store_name: f.store_name, code: f.code, birthdate: f.birthdate }
-          : { email: f.email, password: f.password }))
-    } catch (x) { setErr(x.message) }
+      if (!signup) {
+        onLogin(await api(needStore ? '/rejoin' : '/login', 'POST',
+          { email: f.email, password: f.password, ...(needStore && { code: f.code }) }))
+      } else {
+        onLogin(await api('/register', 'POST', {
+          mode: kind, first_name: f.first_name, middle_name: f.middle_name, last_name: f.last_name,
+          birthdate: f.birthdate, email: f.email, password: f.password,
+          store_name: f.store_name, code: f.code,
+          store_type: f.store_type, accept_terms: f.terms,
+        }))
+      }
+    } catch (x) {
+      if (x.data?.needs_store) setNeedStore(true) // conflict: ask for a store code, right here
+      else setErr(x.message)
+    }
     setBusy(false)
   }
 
-  const go = m => { setMode(m); setErr('') }
+  /* ---------- Log in ---------- */
+  if (screen === 'login') return (
+    <Shell title="Welcome back" sub="Log in to manage your store.">
+      <form onSubmit={submit}>
+        <Field label="Email" type="email" required autoFocus value={f.email} onChange={set('email')} />
+        <Field label="Password" type="password" required value={f.password} onChange={set('password')} />
 
+        {needStore && <>
+          <p className="auth-note">Enter a store code to join a store with this account.</p>
+          <Field label="Store code" required autoFocus value={f.code} onChange={set('code')} style={{ textTransform: 'uppercase' }} />
+        </>}
+
+        {err && <p className="auth-err">{err}</p>}
+        <button className="btn" style={{ width: '100%', marginTop: 18 }} disabled={busy}>
+          {busy ? 'Please wait…' : needStore ? 'Join store' : 'Log in'}
+        </button>
+        {needStore && <p className="auth-switch" style={{ marginTop: 10 }}>
+          <button type="button" className="link" onClick={() => setNeedStore(false)}>Cancel</button>
+        </p>}
+      </form>
+      <p className="auth-switch">New here? <button type="button" className="link" onClick={() => go('signup')}>Create an account</button></p>
+    </Shell>
+  )
+
+  /* ---------- Create account ---------- */
   return (
-    <div className="login-wrap">
-    <form className="login" onSubmit={submit}>
-      <div className="logo" style={{ padding: 0, marginBottom: 4 }}>Sari<span>-Store</span></div>
-      <p className="sub" style={{ marginBottom: 8 }}>{TITLES[mode]}</p>
+    <Shell title="Create your account" sub="Start your own store, or join one with a code.">
+      <form onSubmit={submit}>
+        <div className="seg">
+          <button type="button" className={kind === 'create' ? 'on' : ''} onClick={() => setKind('create')}>Start a store</button>
+          <button type="button" className={kind === 'join' ? 'on' : ''} onClick={() => setKind('join')}>Join with a code</button>
+        </div>
 
-      {mode === 'create' && <>
-        <label>Store name</label>
-        <input required autoFocus value={f.store_name} onChange={set('store_name')} />
-      </>}
-      {mode === 'join' && <>
-        <label>Store code</label>
-        <input required autoFocus value={f.code} onChange={set('code')} style={{ textTransform: 'uppercase' }} />
+                {kind === 'create' ? <>
+          <Field label="Store name" required autoFocus value={f.store_name} onChange={set('store_name')} />
+          <label>Type of business</label>
+          <select value={f.store_type} onChange={set('store_type')}>
+            {STORE_TYPES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+          </select>
+        </> : <Field label="Store code" required autoFocus value={f.code} onChange={set('code')} style={{ textTransform: 'uppercase' }} />}
 
-      </>}
-      {reg && <>
-        <label>First name</label>
-        <input required value={f.first_name} onChange={set('first_name')} />
-        <label>Middle name (optional)</label>
-        <input value={f.middle_name} onChange={set('middle_name')} />
-        <label>Last name</label>
-        <input required value={f.last_name} onChange={set('last_name')} />
-        <label>Birthdate</label>
-        <input type="date" required max={new Date().toISOString().slice(0, 10)} value={f.birthdate} onChange={set('birthdate')} />  
-       
-      </>}
+        {kind === 'join' && (
+          <p className="auth-note warn">
+            Already have an account?{' '}
+            <button type="button" className="link" onClick={() => go('login', true)}>Log in and enter the code instead</button>
+          </p>
+        )}
 
-      <label>Email</label>
-      <input type="email" required autoFocus={mode === 'login'} value={f.email} onChange={set('email')} />
-      <label>Password{reg && ' (at least 8 characters)'}</label>
-      <input type="password" required minLength={reg ? 8 : undefined} value={f.password} onChange={set('password')} />
-      {reg && <>
-        <label>Confirm password</label>
-        <input type="password" required value={f.confirm} onChange={set('confirm')} />
-      </>}
+        <div className="auth-grid">
+          <div><Field label="First name" required value={f.first_name} onChange={set('first_name')} /></div>
+          <div><Field label="Last name" required value={f.last_name} onChange={set('last_name')} /></div>
+        </div>
+        <Field label="Middle name (optional)" value={f.middle_name} onChange={set('middle_name')} />
+        <Field label="Birthdate" type="date" required max={TODAY} value={f.birthdate} onChange={set('birthdate')} />
+        <Field label="Email" type="email" required value={f.email} onChange={set('email')} />
+        <Field label="Password (at least 8 characters)" type="password" required minLength={8} value={f.password} onChange={set('password')} />
+        <Field label="Confirm password" type="password" required value={f.confirm} onChange={set('confirm')} />
 
-      {err && <p style={{ color: 'var(--bad)', margin: '10px 0 0' }}>{err}</p>}
-      <button className="btn" style={{ width: '100%', marginTop: 18 }} disabled={busy}>
-        {busy ? 'Please wait…' : mode === 'login' ? 'Log in' : mode === 'create' ? 'Create my store' : 'Join store'}
-      </button>
+                <label className="check">
+          <input type="checkbox" checked={f.terms} onChange={e => setF({ ...f, terms: e.target.checked })} />
+          <span>I agree to the <button type="button" className="link" onClick={() => setShowTerms(true)}>Terms and Conditions</button></span>
+        </label>
 
-      {mode === 'login' ? <>
-        <button type="button" className="btn ghost" style={{ width: '100%', marginTop: 10 }} onClick={() => go('create')}>Start a new store</button>
-        <button type="button" className="btn ghost" style={{ width: '100%', marginTop: 10 }} onClick={() => go('join')}>Join a store with a code</button>
-      </> : (
-        <button type="button" className="btn ghost" style={{ width: '100%', marginTop: 10 }} onClick={() => go('login')}>I already have an account</button>
-      )}
-    </form>
-    </div>
+        {err && <p className="auth-err">{err}</p>}
+        <button className="btn" style={{ width: '100%', marginTop: 18 }} disabled={busy || !f.terms}>
+          {busy ? 'Please wait…' : kind === 'create' ? 'Create my store' : 'Join store'}
+        </button>
+      </form>
+      <p className="auth-switch">Already have an account? <button type="button" className="link" onClick={() => go('login')}>Log in</button></p>
+              {showTerms && <Terms onClose={() => setShowTerms(false)} />}
+    </Shell>
   )
 }

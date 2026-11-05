@@ -12,10 +12,10 @@ export async function api(path, method = 'GET', body) {
     body: body ? JSON.stringify(body) : undefined,
   })
   const j = await r.json().catch(() => ({}))
- if (r.status === 401 && !['/login', '/register'].includes(path)) {
+ if (r.status === 401 && !['/login', '/register', '/rejoin'].includes(path)) {
     localStorage.removeItem('token'); localStorage.removeItem('user')
     window.dispatchEvent(new Event('logout'))
   }
-  if (!r.ok) throw new Error(j.message || 'Request failed')
+   if (!r.ok) { const e = new Error(j.message || 'Request failed'); e.data = j; throw e }
   return j
 }
