@@ -18,7 +18,7 @@ export default function Profile({ D, run, toast, user }) {
   }, [])
   useEffect(() => { setStore(user?.store || '') }, [user?.store])
 
-if (!f) return <><h1>Profile</h1><PageSkeleton title={false} stats={false} cards={3} /></>
+if (!f) return <PageSkeleton page="profile" />
     const dirty = JSON.stringify(f) !== JSON.stringify(orig)
    const save = async e => {
     e.preventDefault()

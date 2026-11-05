@@ -21,7 +21,7 @@ export default function Sales({ run, toast, user }) {
     if (ok) load()
   }
 
-if (!list) return <><h1>Sales history</h1><PageSkeleton title={false} stats={false} cards={5} /></>
+if (!list) return <PageSkeleton page="sales" />
 
   return (
     <>

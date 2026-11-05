@@ -23,8 +23,8 @@ class User extends Authenticatable
 
     // key => [label, permissions]
     const ROLES = [
-       'owner'     => ['Owner',     ['sell', 'products', 'stock', 'suppliers', 'costs', 'team', 'history', 'void']],
-        'manager'   => ['Manager',   ['sell', 'products', 'stock', 'suppliers', 'costs', 'history', 'void']],
+       'owner'   => ['Owner',   ['sell', 'products', 'stock', 'suppliers', 'costs', 'team', 'history', 'void', 'analytics']],
+'manager' => ['Manager', ['sell', 'products', 'stock', 'suppliers', 'costs', 'history', 'void', 'analytics']],
         'cashier'   => ['Cashier',   ['sell', 'history']],
         'inventory' => ['Inventory', ['products', 'stock', 'suppliers']],
         'viewer'    => ['Viewer',    []],

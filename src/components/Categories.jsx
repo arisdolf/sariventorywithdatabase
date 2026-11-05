@@ -29,9 +29,12 @@ export default function Categories({ D, run, setModal }) {
         const n = D.products.filter(p => p.cat === c.name).length
         return (
           <div key={c.id} style={{ ...row, borderTop: '1px solid var(--line)' }}>
-            <span>{c.name} <small style={{ color: 'var(--mute)' }}>· {n} product{n === 1 ? '' : 's'}</small></span>
-            <span>
-              <button className="btn ghost sm" onClick={() => rename(c)}>Rename</button>{' '}
+            {/* name can shrink and wrap; buttons never do */}
+            <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+              {c.name} <small style={{ color: 'var(--mute)' }}>· {n} product{n === 1 ? '' : 's'}</small>
+            </span>
+            <span style={{ display: 'flex', gap: 8, flex: 'none' }}>
+              <button className="btn ghost sm" onClick={() => rename(c)}>Rename</button>
               <button className="btn ghost sm" onClick={() => remove(c)}>Delete</button>
             </span>
           </div>

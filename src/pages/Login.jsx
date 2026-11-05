@@ -27,7 +27,7 @@ export default function Login({ onLogin }) {
   const [needStore, setNeedStore] = useState(false) // shown only when login says "no store"
   const [f, setF] = useState({
     first_name: '', middle_name: '', last_name: '', birthdate: '',
-    email: '', password: '', confirm: '', store_name: '', code: '',
+    email: '', password: '', confirm: '', store_name: '', code: '' ,store_type: 'sari_sari', terms: false,
   })
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)

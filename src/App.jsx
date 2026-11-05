@@ -3,7 +3,6 @@ import { api } from './services/api'
 import Nav from './components/Nav'
 import Modal from './components/Modal'
 import Toast from './components/Toast'
-import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Products from './pages/Products'
 import NewSale from './pages/NewSale'
@@ -13,7 +12,8 @@ import Team from './pages/Team'
 import Sales from './pages/Sales'
 import Profile from './pages/Profile'
 import { PageSkeleton } from './components/Skeleton'
-
+import Analytics from './pages/Analytics'
+import Login from './pages/Login'
 const EMPTY = { products: [], suppliers: [], orders: [], moves: [] }
 
 export default function App() {
@@ -24,9 +24,8 @@ export default function App() {
   const [modal, setModal] = useState(null)
   const [msg, setMsg] = useState('')
   const [user, setUser] = useState(() => {
-    try { return localStorage.getItem('token') ? JSON.parse(localStorage.getItem('user')) : null }
-    catch { return null }
-  })
+  try { return JSON.parse(localStorage.getItem('user')) } catch { return null }
+})
 
   const toast = m => { setMsg(m); setTimeout(() => setMsg(''), 2500) }
     const refresh = () => api('/data').then(setD).catch(e => toast(e.message || 'Cannot reach the server. Is php artisan serve running?')).finally(() => setLoading(false))
@@ -39,11 +38,11 @@ export default function App() {
   }, [])
 
   const login = ({ token, user }) => {
-    localStorage.setItem('token', token)
-    localStorage.setItem('user', JSON.stringify(user))
-    setD(EMPTY); setView('dash')
-    setUser(user)
-  }
+  localStorage.setItem('token', token)
+  localStorage.setItem('user', JSON.stringify(user))
+  setD(EMPTY); setView('dash'); setLoading(true)
+  setUser(user)
+}
   const logout = async () => {
     try { await api('/logout', 'POST') } catch {}
     localStorage.removeItem('token'); localStorage.removeItem('user')
@@ -56,11 +55,12 @@ export default function App() {
     catch (e) { toast(e.message); return false }
   }
 
-  if (!user) return <Login onLogin={login} />
+    if (!user) return <Login onLogin={login} />
 
   const me = D.me || user
   const perms = me.perms || []
   const allowed = {
+    analytics: perms.includes('analytics'),
         profile: true,
     sales: perms.includes('history'),
     dash: true,
@@ -79,7 +79,8 @@ export default function App() {
     <>
       <Nav view={page} setView={setView} perms={perms} store={me.store} onLogout={logout} />
             <main>
-        {busy && <PageSkeleton />}
+              {page === 'analytics' && <Analytics {...shared} />}
+         {busy && <PageSkeleton page={page} />}
         {page === 'profile' && <Profile {...shared} />}
         {page === 'sales' && <Sales {...shared} />}
         {page === 'team' && <Team {...shared} />}

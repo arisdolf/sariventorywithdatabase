@@ -24,7 +24,7 @@ export default function Team({ user, toast }) {
     if (confirm('Remove ' + m.name + ' from the store?')) act(() => api('/team/' + m.id, 'DELETE'), 'Member removed')
   }
 
-if (!t) return <><h1>Team</h1><PageSkeleton title={false} stats={false} cards={4} /></>
+if (!t) return <PageSkeleton page="team" />
 
   return (
     <>

@@ -7,6 +7,7 @@ const ICONS = {
   sales: <><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z" /><path d="M9 8h6M9 12h6" /></>,
   stock: <><path d="M7 4v16M7 20l-3-3M7 20l3-3" /><path d="M17 20V4M17 4l-3 3M17 4l3 3" /></>,
   sup: <><path d="M1 6h13v10H1zM14 9h4l3 3v4h-7" /><circle cx="6" cy="18" r="1.8" /><circle cx="17" cy="18" r="1.8" /></>,
+  analytics: <><path d="M4 20V10M10 20V4M16 20v-8M22 20H2" /></>,
   team: <><circle cx="9" cy="8" r="3.5" /><path d="M2 20c0-3.5 3-6 7-6s7 2.5 7 6" /><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14c2.5.6 4 2.6 4 5" /></>,
   profile: <><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7" /></>,
   more: <><circle cx="5" cy="12" r="1.7" fill="currentColor" /><circle cx="12" cy="12" r="1.7" fill="currentColor" /><circle cx="19" cy="12" r="1.7" fill="currentColor" /></>,
@@ -23,6 +24,7 @@ const TABS = [
   ['sales', 'Sales history', 'Sales', 'history'],
   ['stock', 'Stock movements', 'Stock', 'stock'],
   ['sup', 'Suppliers', 'Suppliers', 'suppliers'],
+  ['analytics', 'Analytics', 'Reports', 'analytics'],
   ['team', 'Team', 'Team', 'team'],
   ['profile', 'Profile', 'Me', null],
 ]
@@ -47,7 +49,8 @@ export default function Nav({ view, setView, perms = [], store, onLogout }) {
         <button className="out" onClick={onLogout}><Icon n="out" /><span>Log out</span></button>
       </nav>
 
-    
+      {/* Mobile top bar */}
+      <div className="top"><b>{store || 'Sariventory'}</b></div>
 
       {/* Mobile floating tab bar */}
       <div className="tabbar">
