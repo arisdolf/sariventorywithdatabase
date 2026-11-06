@@ -5,18 +5,21 @@ use App\Http\Controllers\StoreController as S;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TeamController as T;
 use App\Http\Controllers\ProfileController as P;
-use App\Http\Controllers\AnalyticsController;
+use App\Http\Controllers\AnalyticsController as A;
 
-// Public: no token needed (throttles are loosened for testing)
-Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:60,1');
-Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:60,1');
-Route::post('/rejoin', [AuthController::class, 'rejoin'])->middleware('throttle:60,1');
+// Public: no token needed
+
+Route::post('/forgot-password', [AuthController::class, 'forgot'])->middleware('throttle:5,1');
+Route::post('/reset-password', [AuthController::class, 'reset'])->middleware('throttle:10,1');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:10,1');
+Route::post('/rejoin', [AuthController::class, 'rejoin'])->middleware('throttle:10,1');
+Route::post('/verify-email', [AuthController::class, 'verify'])->middleware('throttle:10,1');
+Route::post('/resend-code', [AuthController::class, 'resend'])->middleware('throttle:5,1');
 
 // Private: needs a logged-in token
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/analytics', [AnalyticsController::class, 'index']);
-
     Route::get('/data', [S::class, 'data']);
 
     Route::post('/products', [S::class, 'storeProduct']);
@@ -39,6 +42,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/suppliers/{id}', [S::class, 'updateSupplier']);
     Route::delete('/suppliers/{id}', [S::class, 'destroySupplier']);
 
+    Route::get('/analytics', [A::class, 'index']);
+
     Route::get('/team', [T::class, 'index']);
     Route::post('/team/code', [T::class, 'newCode']);
     Route::put('/team/{id}', [T::class, 'update']);
@@ -48,8 +53,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/profile', [P::class, 'update']);
     Route::put('/profile/password', [P::class, 'password']);
     Route::put('/store', [P::class, 'renameStore']);
-
     Route::delete('/account', [P::class, 'destroy']);
-
-    
 });

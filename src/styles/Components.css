@@ -123,6 +123,9 @@ dialog input, dialog select { width: 100% }
 .opts small { color: var(--mute); white-space: nowrap }
 .none { padding: 12px; color: var(--mute); text-align: center }
 
+/* Search dropdown that floats above the modal and fits the screen */
+.opts.fx { position: fixed; right: auto; max-height: none }
+
 /* --- Skeleton loading --- */
 .sk {
   background: linear-gradient(90deg, var(--panel) 25%, var(--line) 50%, var(--panel) 75%);
@@ -190,15 +193,31 @@ dialog input, dialog select { width: 100% }
 .sk-tbl .sk-row:last-child { border-bottom: 0 }
 
 /* Analytics chart */
-.an-chart { display: flex; align-items: stretch; gap: 6px; height: 240px; overflow-x: auto; padding: 14px 8px 0; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 14px }
-.an-col { flex: 1 0 46px; display: flex; flex-direction: column; align-items: center; gap: 4px }
+ 
+.an-chart { display: flex; align-items: stretch; gap: 4px; height: 240px; padding: 14px 30px 0; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 14px; overflow-x: auto; overflow-y: hidden; max-width: 100%; -webkit-overflow-scrolling: touch }
+.an-col { flex: 1 0 32px; min-width: 32px; display: flex; flex-direction: column; align-items: center; gap: 4px }
 .an-plot { flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center }
-.an-bar { width: 100%; max-width: 36px; min-height: 2px; background: var(--acc); border-radius: 6px 6px 0 0 }
-.an-col small { color: var(--mute); font-size: 11px; white-space: nowrap; padding-bottom: 6px }
+.an-bar { width: 100%; max-width: 36px; min-height: 2px; background: var(--acc); border-radius: 4px 4px 0 0 }
+.an-col small { width: 0; display: flex; justify-content: center; color: var(--mute); font-size: 11px; white-space: nowrap; padding-bottom: 6px; min-height: 22px }
+
+/* Long tables scroll inside their own box */
+.tw.scroll { max-height: 420px; overflow-y: auto }
+.tw.scroll thead th { position: sticky; top: 0; z-index: 1 }
+
+/* Tables that wrap their text instead of scrolling sideways */
+.tw.wrap { overflow-x: visible }
+.tw.wrap th, .tw.wrap td { white-space: normal; overflow-wrap: anywhere }
+.tw.wrap td.act { white-space: nowrap }
 
 @media (max-width: 760px) {
   .sk-tbl { border: 0; overflow: visible }
   .sk-head { display: none }
   .sk-row { flex-direction: column; align-items: stretch; gap: 10px; border: 1px solid var(--line); border-radius: 12px; margin-bottom: 10px }
   .sk-row > * { flex: none }
+}
+
+/* Receipt stays centered on phones (forms stay as bottom sheets) */
+@media (max-width: 760px) {
+  .ov.rc-ov { place-items: center; padding: 16px }
+  .ov.rc-ov .receipt { max-height: 85vh }
 }

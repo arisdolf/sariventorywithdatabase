@@ -4,8 +4,11 @@ import { PageSkeleton } from '../components/Skeleton'
 import { api } from '../services/api'
 import { peso } from '../utils/format'
 
+
 const STEPS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12]
 const GROUPS = [['daily', 'Daily'], ['weekly', 'Weekly'], ['monthly', 'Monthly'], ['yearly', 'Yearly']]
+
+// A grouping is only offered when it makes sense for the range AND the account is old enough
 
 // A grouping is only offered when it makes sense for the range AND the account is old enough
 const groupOk = (g, unit, n, meta) => {
@@ -23,6 +26,7 @@ export default function Analytics({ toast }) {
   const [data, setData] = useState(null)
   const [busy, setBusy] = useState(false)
 
+
   useEffect(() => {
     setBusy(true)
     api(`/analytics?group=${g}&unit=${unit}&n=${n}`)
@@ -39,7 +43,7 @@ export default function Analytics({ toast }) {
   const groups = GROUPS.filter(([k]) => groupOk(k, unit, n, meta))
   const canYears = meta.age_years >= 1
   const max = Math.max(...series.map(s => s.sales), 1)
-
+    const step = series.length > 40 ? 3 : series.length > 14 ? 2 : 1  // show about 6 labels max
   // Change the range, and move to a valid grouping if the current one no longer fits
   const setRange = (u, k) => {
     setUnit(u); setN(k)
@@ -80,16 +84,16 @@ export default function Analytics({ toast }) {
         </div>
 
         {totals.orders ? <>
-          <div className="an-chart">
-            {series.map(s => (
+          <div className="an-chart" ref={el => { if (el) el.scrollLeft = el.scrollWidth }}>
+            {series.map((s, i) => (
               <div className="an-col" key={s.key} title={`${s.label}: ${peso(s.sales)} · ${s.orders} order${s.orders === 1 ? '' : 's'}`}>
                 <div className="an-plot"><div className="an-bar" style={{ height: (s.sales / max * 100) + '%' }} /></div>
-                <small>{s.label}</small>
+                <small>{i % step === 0 ? s.label : ''}</small>
               </div>
             ))}
           </div>
 
-          <div className="tw"><table>
+          <div className="tw scroll"><table>
             <thead><tr><th>Period</th><th>Orders</th><th>Sales</th>{totals.profit != null && <th>Profit</th>}</tr></thead>
             <tbody>
               {[...series].reverse().map(s => (

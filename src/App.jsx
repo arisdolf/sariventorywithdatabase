@@ -79,7 +79,8 @@ export default function App() {
     <>
       <Nav view={page} setView={setView} perms={perms} store={me.store} onLogout={logout} />
             <main>
-              {page === 'analytics' && <Analytics {...shared} />}
+              <div key={page} className="page">
+        {page === 'analytics' && <Analytics {...shared} />}
          {busy && <PageSkeleton page={page} />}
         {page === 'profile' && <Profile {...shared} />}
         {page === 'sales' && <Sales {...shared} />}
@@ -89,6 +90,7 @@ export default function App() {
         {!busy && page === 'sale' && <NewSale {...shared} cart={cart} setCart={setCart} />}
         {!busy && page === 'stock' && <StockMovements {...shared} />}
         {!busy && page === 'sup' && <Suppliers {...shared} />}
+        </div>
       </main>
       {modal && <Modal {...modal} onSave={modal.save} onClose={() => setModal(null)} />}
       <Toast msg={msg} />

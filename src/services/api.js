@@ -12,7 +12,7 @@ export async function api(path, method = 'GET', body) {
     body: body ? JSON.stringify(body) : undefined,
   })
   const j = await r.json().catch(() => ({}))
- if (r.status === 401 && !['/login', '/register', '/rejoin'].includes(path)) {
+   if (r.status === 401 && !['/login', '/register', '/rejoin', '/verify-email', '/resend-code', '/forgot-password', '/reset-password'].includes(path)) {
     localStorage.removeItem('token'); localStorage.removeItem('user')
     window.dispatchEvent(new Event('logout'))
   }

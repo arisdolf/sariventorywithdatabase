@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { api } from '../services/api'
 import Terms from '../components/Terms'
 import { STORE_TYPES } from '../utils/format'
+import Verify from './Verify'
+import ForgotPassword from './ForgotPassword'
 const TODAY = new Date().toISOString().slice(0, 10)
 
 // Defined outside the page so inputs keep focus while typing
@@ -29,12 +31,15 @@ export default function Login({ onLogin }) {
     first_name: '', middle_name: '', last_name: '', birthdate: '',
     email: '', password: '', confirm: '', store_name: '', code: '' ,store_type: 'sari_sari', terms: false,
   })
+    const [forgot, setForgot] = useState(false)
+  const [notice, setNotice] = useState('')
+    const [pending, setPending] = useState(null) // email waiting for a code
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const set = k => e => setF({ ...f, [k]: e.target.value })
 
   const go = (s, store = false) => { setScreen(s); setErr(''); setNeedStore(store) }
-
+  const finish = res => res.needs_verification ? setPending(res.email) : onLogin(res)
   const submit = async e => {
     e.preventDefault()
     setErr('')
@@ -42,12 +47,12 @@ export default function Login({ onLogin }) {
     if (signup && f.password !== f.confirm) return setErr('Passwords do not match')
     if (signup && !f.terms) return setErr('Please agree to the Terms and Conditions')
     setBusy(true)
-    try {
+        try {
       if (!signup) {
-        onLogin(await api(needStore ? '/rejoin' : '/login', 'POST',
+        finish(await api(needStore ? '/rejoin' : '/login', 'POST',
           { email: f.email, password: f.password, ...(needStore && { code: f.code }) }))
       } else {
-        onLogin(await api('/register', 'POST', {
+        finish(await api('/register', 'POST', {
           mode: kind, first_name: f.first_name, middle_name: f.middle_name, last_name: f.last_name,
           birthdate: f.birthdate, email: f.email, password: f.password,
           store_name: f.store_name, code: f.code,
@@ -55,18 +60,32 @@ export default function Login({ onLogin }) {
         }))
       }
     } catch (x) {
-      if (x.data?.needs_store) setNeedStore(true) // conflict: ask for a store code, right here
+      if (x.data?.needs_verification) setPending(x.data.email)
+      else if (x.data?.needs_store) setNeedStore(true)
       else setErr(x.message)
     }
     setBusy(false)
   }
 
+      if (forgot) return (
+    <ForgotPassword
+      initialEmail={f.email}
+      onBack={() => setForgot(false)}
+      onDone={() => { setForgot(false); setF({ ...f, password: '' }); setNotice('Password changed. Log in with your new password.') }}
+    />
+  )
+    if (pending) return <Verify email={pending} onLogin={onLogin} onBack={() => { setPending(null); go('login') }} />
   /* ---------- Log in ---------- */
   if (screen === 'login') return (
     <Shell title="Welcome back" sub="Log in to manage your store.">
       <form onSubmit={submit}>
+        
+        {notice && <p className="auth-note">{notice}</p>}
         <Field label="Email" type="email" required autoFocus value={f.email} onChange={set('email')} />
         <Field label="Password" type="password" required value={f.password} onChange={set('password')} />
+        <p style={{ margin: '8px 0 0', textAlign: 'right' }}>
+          <button type="button" className="link" onClick={() => { setNotice(''); setForgot(true) }}>Forgot password?</button>
+        </p>
 
         {needStore && <>
           <p className="auth-note">Enter a store code to join a store with this account.</p>

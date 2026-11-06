@@ -1,0 +1,83 @@
+/* ===== Animations ===== */
+
+@keyframes a-fade  { from { opacity: 0 } }
+@keyframes a-rise  { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: none } }
+@keyframes a-pop   { from { opacity: 0; transform: scale(.94) translateY(8px) } to { opacity: 1; transform: none } }
+@keyframes a-slide { from { transform: translateY(100%) } to { transform: none } }
+@keyframes a-drop  { from { opacity: 0; transform: translateY(-6px) } to { opacity: 1; transform: none } }
+@keyframes a-toast { from { opacity: 0; transform: translate(-50%, 14px) } to { opacity: 1; transform: translate(-50%, 0) } }
+@keyframes a-grow  { from { transform: scaleY(0) } to { transform: scaleY(1) } }
+
+/* Page change (App.jsx wraps each page in .page with a key) */
+.page { animation: a-rise .3s ease-out backwards }
+
+/* Login card */
+.login { animation: a-rise .35s ease-out backwards }
+
+/* Lists: rows and stat tiles appear one after another */
+
+tbody tr { animation: a-fade .3s ease-out backwards }
+tbody tr:nth-child(2) { animation-delay: .04s }
+tbody tr:nth-child(3) { animation-delay: .08s }
+tbody tr:nth-child(4) { animation-delay: .12s }
+tbody tr:nth-child(5) { animation-delay: .16s }
+tbody tr:nth-child(6) { animation-delay: .20s }
+tbody tr:nth-child(n+7) { animation-delay: .24s }
+
+.stat { animation: a-rise .35s ease-out backwards }
+.stats .stat:nth-child(2) { animation-delay: .05s }
+.stats .stat:nth-child(3) { animation-delay: .10s }
+.stats .stat:nth-child(4) { animation-delay: .15s }
+
+/* Modals, receipt, terms */
+.ov { animation: a-fade .2s ease-out backwards }
+.ov dialog, .receipt, .terms { animation: a-pop .22s cubic-bezier(.2, .8, .2, 1) backwards }
+
+/* Dropdowns and toast */
+.opts { animation: a-drop .15s ease-out backwards }
+#toast { animation: a-toast .25s ease-out backwards }
+
+/* Analytics bars grow up from the baseline */
+.an-bar { transform-origin: bottom; animation: a-grow .55s cubic-bezier(.2, .8, .2, 1) backwards }
+.an-col:nth-child(2) .an-bar { animation-delay: .03s }
+.an-col:nth-child(3) .an-bar { animation-delay: .06s }
+.an-col:nth-child(4) .an-bar { animation-delay: .09s }
+.an-col:nth-child(5) .an-bar { animation-delay: .12s }
+.an-col:nth-child(6) .an-bar { animation-delay: .15s }
+.an-col:nth-child(n+7) .an-bar { animation-delay: .18s }
+
+/* Hover and press feedback */
+.btn, nav.side button, .seg button, .tile, .card, .stat, input, select {
+  transition: background .15s, color .15s, border-color .15s, box-shadow .2s, transform .15s, filter .15s;
+}
+.btn:not(:disabled):hover { filter: brightness(1.07); transform: translateY(-1px) }
+.btn:not(:disabled):active { transform: scale(.97); filter: none }
+.btn.ghost:not(:disabled):hover { background: var(--panel); filter: none }
+.stat:hover, .card:hover { border-color: var(--acc) }
+input:focus, select:focus { box-shadow: 0 0 0 3px var(--accbg) }
+
+/* Phones: modal slides up as a sheet */
+@media (max-width: 760px) {
+  .ov dialog { animation: a-slide .28s ease-out backwards }
+  .btn:not(:disabled):hover { transform: none }
+}
+
+@media (max-width: 760px) {
+  .receipt { animation: a-pop .22s cubic-bezier(.2, .8, .2, 1) backwards }
+}
+
+/* People who turned on "reduce motion" get no movement */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-delay: 0s !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+.tw, .an-chart { overflow-y: hidden }
+.page { overflow-x: clip }
+
+@media (max-width: 760px) {
+  .tw { overflow-y: visible }
+}

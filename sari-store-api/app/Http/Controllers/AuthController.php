@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Mail;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -9,6 +11,112 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 class AuthController extends Controller
 {
+
+    public function forgot(Request $r)
+    {
+        $v = $r->validate(['email' => 'required|email']);
+        $user = User::where('email', $v['email'])->first();
+
+        if ($user) {
+            $row = DB::table('password_resets')->where('user_id', $user->getKey())->first();
+            $tooSoon = $row && Carbon::parse($row->sent_at)->gt(now()->subSeconds(60));
+
+            if (!$tooSoon) {
+                $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+                DB::table('password_resets')->updateOrInsert(
+                    ['user_id' => $user->getKey()],
+                    ['code_hash' => Hash::make($code), 'expires_at' => now()->addMinutes(15), 'attempts' => 0, 'sent_at' => now()]
+                );
+                try {
+                    Mail::raw(
+                        "Hi {$user->first_name},\n\nYour Sariventory password reset code is $code.\nIt expires in 15 minutes. If you didn't ask for this, ignore this email and your password stays the same.",
+                        fn($m) => $m->to($user->email)->subject('Reset your Sariventory password')
+                    );
+                } catch (\Throwable $e) { report($e); }
+            }
+        }
+        return ['ok' => true]; // same answer whether or not the email exists
+    }
+
+    public function reset(Request $r)
+    {
+        $v = $r->validate([
+            'email' => 'required|email',
+            'code' => 'required|digits:6',
+            'password' => 'required|string|min:8|max:100',
+        ]);
+        $user = User::where('email', $v['email'])->first();
+        $row = $user ? DB::table('password_resets')->where('user_id', $user->getKey())->first() : null;
+
+        if (!$row) return response()->json(['message' => 'Invalid or expired code'], 422);
+        if ($row->attempts >= 5 || now()->gt($row->expires_at)) {
+            return response()->json(['message' => 'Code expired. Request a new one.'], 422);
+        }
+        if (!Hash::check($v['code'], $row->code_hash)) {
+            DB::table('password_resets')->where('user_id', $user->getKey())->increment('attempts');
+            return response()->json(['message' => 'Wrong code'], 422);
+        }
+
+        $user->forceFill(['password_hash' => $v['password']]); // hashed by the model
+        if (!$user->email_verified_at) $user->email_verified_at = now(); // they proved they own the email
+        $user->save();
+
+        DB::table('password_resets')->where('user_id', $user->getKey())->delete();
+        // Log out every device
+        DB::table('personal_access_tokens')
+            ->where('tokenable_type', User::class)->where('tokenable_id', $user->getKey())->delete();
+
+        return ['ok' => true];
+    }
+    
+    private function sendCode(User $user): void
+    {
+        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        DB::table('email_verifications')->updateOrInsert(
+            ['user_id' => $user->getKey()],
+            ['code_hash' => Hash::make($code), 'expires_at' => now()->addMinutes(15), 'attempts' => 0, 'sent_at' => now()]
+        );
+        Mail::raw(
+            "Hi {$user->first_name},\n\nYour Sariventory verification code is $code.\nIt expires in 15 minutes. If you didn't sign up, ignore this email.",
+            fn($m) => $m->to($user->email)->subject('Your Sariventory verification code')
+        );
+    }
+
+    public function verify(Request $r)
+    {
+        $v = $r->validate(['email' => 'required|email', 'code' => 'required|digits:6']);
+        $user = User::where('email', $v['email'])->first();
+        $row = $user ? DB::table('email_verifications')->where('user_id', $user->getKey())->first() : null;
+
+        if (!$row) return response()->json(['message' => 'Invalid or expired code'], 422);
+        if ($row->attempts >= 5 || now()->gt($row->expires_at)) {
+            return response()->json(['message' => 'Code expired. Request a new one.'], 422);
+        }
+        if (!Hash::check($v['code'], $row->code_hash)) {
+            DB::table('email_verifications')->where('user_id', $user->getKey())->increment('attempts');
+            return response()->json(['message' => 'Wrong code'], 422);
+        }
+
+        DB::table('users')->where('user_id', $user->getKey())->update(['email_verified_at' => now()]);
+        DB::table('email_verifications')->where('user_id', $user->getKey())->delete();
+        return $this->session($user->fresh());
+    }
+
+    public function resend(Request $r)
+    {
+        $v = $r->validate(['email' => 'required|email']);
+        $user = User::where('email', $v['email'])->first();
+
+        if ($user && !$user->email_verified_at) {
+            $row = DB::table('email_verifications')->where('user_id', $user->getKey())->first();
+            if ($row && Carbon::parse($row->sent_at)->gt(now()->subSeconds(60))) {
+                return response()->json(['message' => 'Wait a minute before asking for another code'], 429);
+            }
+            try { $this->sendCode($user); } catch (\Throwable $e) { report($e); }
+        }
+        return ['ok' => true]; // same answer whether or not the email exists
+    }
+
     const JOIN_ROLE = 'cashier'; // role everyone gets when joining with a code
     const STORE_TYPES = ['sari_sari', 'small_business', 'street_vendor', 'mini_grocery', 'food_stall', 'online_seller', 'other'];
     public static function makeCode(): string
@@ -32,6 +140,10 @@ class AuthController extends Controller
         if (!$user || !Hash::check($v['password'], $user->getAuthPassword())) {
             return response()->json(['message' => 'Wrong email or password'], 401);
         }
+                if (config('app.require_email_verification') && !$user->email_verified_at) {
+            return response()->json(['message' => 'Please verify your email first', 'needs_verification' => true, 'email' => $user->email], 403);
+        }
+
                 if ($user->store_id) {
             $isOwner = DB::table('stores')
                 ->where('store_id', $user->store_id)
@@ -59,6 +171,14 @@ class AuthController extends Controller
         if (!$user || !Hash::check($v['password'], $user->getAuthPassword())) {
             return response()->json(['message' => 'Wrong email or password'], 401);
         }
+                if (config('app.require_email_verification') && !$user->email_verified_at) {
+            try { $this->sendCode($user); } catch (\Throwable $e) { report($e); }
+            return response()->json([
+                'message' => 'Please verify your email first. We sent you a new code.',
+                'needs_verification' => true, 'email' => $user->email,
+            ], 403);
+        }
+
                if (!$user->store_id) {
             return response()->json([
                 'message' => 'Your account is not in a store yet.',
@@ -122,7 +242,12 @@ class AuthController extends Controller
             return $u;
         });
 
-        return $this->session($user);
+               if (config('app.require_email_verification')) {
+            try { $this->sendCode($user); } catch (\Throwable $e) { report($e); }
+            return ['needs_verification' => true, 'email' => $user->email];
+        }
+        DB::table('users')->where('user_id', $user->getKey())->update(['email_verified_at' => now()]);
+        return $this->session($user->fresh());
     }
 
     public function logout(Request $r)

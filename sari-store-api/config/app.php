@@ -12,7 +12,7 @@ return [
     | other UI elements where an application name needs to be displayed.
     |
     */
-
+    'require_email_verification' => env('REQUIRE_EMAIL_VERIFICATION', true),
     'name' => env('APP_NAME', 'Laravel'),
 
     /*

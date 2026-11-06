@@ -19,7 +19,7 @@ export default function Suppliers({ D, run, setModal }) {
     <>
       <h1>Suppliers</h1><p className="sub">People you buy stock from.</p>
       <div className="bar"><button className="btn" onClick={() => form()}>Add supplier</button></div>
-      <div className="tw">{D.suppliers.length ? <table>
+      <div className="tw wrap">{D.suppliers.length ? <table>
         <thead><tr><th>Name</th><th>Contact person</th><th>Phone</th><th>Email</th><th>Address</th><th></th></tr></thead>
         <tbody>
           {D.suppliers.map(s => <tr key={s.id}>
