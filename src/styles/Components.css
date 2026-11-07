@@ -221,3 +221,41 @@ dialog input, dialog select { width: 100% }
   .ov.rc-ov { place-items: center; padding: 16px }
   .ov.rc-ov .receipt { max-height: 85vh }
 }
+
+/* Settings: toggle switch, option cards, scrollable tabs */
+.row2 { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 10px 0; border-top: 1px solid var(--line) }
+.switch { position: relative; width: 46px; height: 26px; flex: none; margin: 0 }
+.switch input { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; margin: 0; opacity: 0; cursor: pointer; z-index: 1 }
+.switch span { position: absolute; inset: 0; background: var(--line); border-radius: 99px; transition: background .2s }
+.switch span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .2s }
+.switch input:checked + span { background: var(--acc) }
+.switch input:checked + span::after { transform: translateX(20px) }
+
+.opt { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer }
+.opt.on { border-color: var(--acc); background: var(--accbg) }
+.opt input { width: auto; min-height: 0; margin-top: 5px }
+
+.seg.scroll { overflow-x: auto }
+.seg.scroll button { white-space: nowrap }
+
+/* Settings sections */
+.set-sec { margin-bottom: 36px }
+.set-sec h2 { font-size: 18px; margin: 0 0 4px }
+.set-sec + .set-sec { padding-top: 24px; border-top: 1px solid var(--line) }
+
+/* Settings link buttons */
+.go-list { display: grid; gap: 10px; max-width: 520px }
+.go { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 14px 16px; border: 1px solid var(--line); border-radius: 10px; background: none; color: var(--text); font: inherit; cursor: pointer }
+.go small { color: var(--mute) }
+.go:hover { border-color: var(--acc); background: var(--panel) }
+.go .chev { font-size: 24px; color: var(--mute); flex: none }
+
+/* Confirm modal */
+.ov.cf-ov { z-index: 8; place-items: center; padding: 16px }
+.confirm { background: var(--bg); width: min(380px, 100%); text-align: center; padding: 24px; animation: a-pop .2s cubic-bezier(.2, .8, .2, 1) backwards }
+.confirm h3 { margin: 12px 0 6px; font-size: 18px }
+.confirm p { margin: 0; color: var(--mute); overflow-wrap: anywhere }
+.cf-icon { width: 52px; height: 52px; margin: 0 auto; border-radius: 50%; display: grid; place-items: center; background: var(--warnbg); color: var(--warn) }
+.cf-icon.danger { color: var(--bad) }
+.cf-btns { display: flex; gap: 10px; margin-top: 20px }
+.cf-btns .btn { flex: 1 }

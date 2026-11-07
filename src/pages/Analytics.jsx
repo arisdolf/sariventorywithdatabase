@@ -19,7 +19,7 @@ const groupOk = (g, unit, n, meta) => {
   return unit === 'years' && n >= 2 && meta.age_years >= 2 // yearly
 }
 
-export default function Analytics({ toast }) {
+export default function Analytics({ toast, embedded, setView }) {
   const [g, setG] = useState('daily')
   const [unit, setUnit] = useState('months')
   const [n, setN] = useState(1)
@@ -55,8 +55,11 @@ export default function Analytics({ toast }) {
 
   return (
     <>
-      <h1>Analytics</h1>
-      <p className="sub">Sales over time. Options grow as your store gets older.</p>
+                  {!embedded && <>
+        <button type="button" className="link" onClick={() => setView('settings')}>‹ Back to Settings</button>
+        <h1 style={{ marginTop: 8 }}>Analytics</h1>
+        <p className="sub">Sales over time. Options grow as your store gets older.</p>
+      </>}
 
       <div className="bar">
         <div className="seg" style={{ margin: 0 }}>

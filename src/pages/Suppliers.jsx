@@ -1,7 +1,8 @@
 import Empty from '../components/Empty'
 import { api } from '../services/api'
-
+import { useConfirm } from '../components/Confirm'
 export default function Suppliers({ D, run, setModal }) {
+  const ask = useConfirm()
   const form = s => setModal({
     title: s ? 'Edit supplier' : 'Add supplier',
     fields: [
@@ -13,7 +14,10 @@ export default function Suppliers({ D, run, setModal }) {
     ],
     save: v => run(() => s ? api('/suppliers/' + s.id, 'PUT', v) : api('/suppliers', 'POST', v), 'Supplier saved'),
   })
-  const remove = s => { if (confirm('Delete this supplier?')) run(() => api('/suppliers/' + s.id, 'DELETE'), 'Supplier deleted') }
+    const remove = async s => {
+    if (await ask({ title: 'Delete supplier?', message: `“${s.name}” will be removed.`, confirmText: 'Delete', danger: true }))
+      run(() => api('/suppliers/' + s.id, 'DELETE'), 'Supplier deleted')
+  }
 
   return (
     <>

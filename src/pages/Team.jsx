@@ -2,13 +2,17 @@ import { useEffect, useState } from 'react'
 import Empty from '../components/Empty'
 import { api } from '../services/api'
 import { PageSkeleton } from '../components/Skeleton'
+import { useConfirm } from '../components/Confirm'
 const PERM = {
   sell: 'make sales', products: 'manage products', stock: 'add stock',
   suppliers: 'manage suppliers', costs: 'see capital and profit', team: 'manage the team',
   history: 'see sales history', void: 'void sales',
+    analytics: 'see analytics', activity: 'see the activity center',
 }
 
 export default function Team({ user, toast }) {
+  
+  const ask = useConfirm()
   const [t, setT] = useState(null)
   const load = () => api('/team').then(setT).catch(e => toast(e.message))
   useEffect(() => { load() }, [])
@@ -17,11 +21,13 @@ export default function Team({ user, toast }) {
     try { await fn(); await load(); toast(m) } catch (e) { toast(e.message) }
   }
   const copy = () => { navigator.clipboard?.writeText(t.store.join_code); toast('Code copied') }
-  const newCode = () => {
-    if (confirm('Make a new code? The old code will stop working.')) act(() => api('/team/code', 'POST'), 'New code created')
+    const newCode = async () => {
+    if (await ask({ title: 'Make a new code?', message: 'The old store code will stop working.', confirmText: 'Make new code' }))
+      act(() => api('/team/code', 'POST'), 'New code created')
   }
-  const remove = m => {
-    if (confirm('Remove ' + m.name + ' from the store?')) act(() => api('/team/' + m.id, 'DELETE'), 'Member removed')
+  const remove = async m => {
+    if (await ask({ title: 'Remove from team?', message: `${m.name} will lose access to the store.`, confirmText: 'Remove', danger: true }))
+      act(() => api('/team/' + m.id, 'DELETE'), 'Member removed')
   }
 
 if (!t) return <PageSkeleton page="team" />

@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use App\Support\Activity;
 
 class TeamController extends Controller
 {
@@ -36,21 +37,23 @@ class TeamController extends Controller
         return compact('store', 'members', 'roles');
     }
 
-    public function update(Request $r, $id)
+       public function update(Request $r, $id)
     {
         $u = $this->owner($r);
         $v = $r->validate(['role' => ['required', Rule::in(array_diff(array_keys(User::ROLES), ['owner']))]]);
-        $this->member($u, $id);
+        $m = $this->member($u, $id);
         DB::table('users')->where('user_id', $id)->update(['role' => $v['role']]);
+        Activity::log($u->store_id, 'team', "Changed {$m->name}'s role to " . User::ROLES[$v['role']][0]);
         return ['ok' => true];
     }
 
     public function destroy(Request $r, $id)
     {
         $u = $this->owner($r);
-        $this->member($u, $id);
+        $m = $this->member($u, $id);
         DB::table('users')->where('user_id', $id)->update(['store_id' => null, 'role' => 'viewer']);
         DB::table('personal_access_tokens')->where('tokenable_type', User::class)->where('tokenable_id', $id)->delete();
+        Activity::log($u->store_id, 'team', "Removed {$m->name} from the team");
         return ['ok' => true];
     }
 
@@ -59,6 +62,7 @@ class TeamController extends Controller
         $u = $this->owner($r);
         $code = AuthController::makeCode();
         DB::table('stores')->where('store_id', $u->store_id)->update(['join_code' => $code]);
+        Activity::log($u->store_id, 'team', 'Made a new store code');
         return ['join_code' => $code];
     }
 }

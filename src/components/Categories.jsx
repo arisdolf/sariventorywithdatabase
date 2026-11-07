@@ -1,8 +1,9 @@
 import { api } from '../services/api'
-
+import { useConfirm } from '../components/Confirm'
 const row = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '6px 0' }
 
 export default function Categories({ D, run, setModal }) {
+  const ask = useConfirm()
   const list = D.categories || []
 
   const add = () => setModal({
@@ -15,8 +16,9 @@ export default function Categories({ D, run, setModal }) {
     fields: [{ n: 'name', l: 'Category name', v: c.name, req: 1 }],
     save: v => run(() => api('/categories/' + c.id, 'PUT', v), 'Category renamed'),
   })
-  const remove = c => {
-    if (confirm('Delete the category "' + c.name + '"?')) run(() => api('/categories/' + c.id, 'DELETE'), 'Category deleted')
+    const remove = async c => {
+    if (await ask({ title: 'Delete category?', message: `“${c.name}” will be removed.`, confirmText: 'Delete', danger: true }))
+      run(() => api('/categories/' + c.id, 'DELETE'), 'Category deleted')
   }
 
   return (

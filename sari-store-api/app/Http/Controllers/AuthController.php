@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use App\Support\Activity;
 class AuthController extends Controller
 {
 
@@ -160,6 +161,7 @@ class AuthController extends Controller
         if (!$store) return response()->json(['message' => 'That store code does not exist'], 422);
 
         $user->forceFill(['store_id' => $store->store_id, 'role' => self::JOIN_ROLE])->save();
+        Activity::log($store->store_id, 'team', "{$user->name} joined the team", $user->getKey());
         return $this->session($user->fresh());
     }
 
@@ -212,6 +214,7 @@ class AuthController extends Controller
         }
 
         $user = DB::transaction(function () use ($v, $store) {
+            
             if ($v['mode'] === 'create') {
     $sid = DB::table('stores')->insertGetId([
     'name' => $v['store_name'], 'join_code' => self::makeCode(), 'store_type' => $v['store_type'],
@@ -241,6 +244,10 @@ class AuthController extends Controller
             }
             return $u;
         });
+
+                if ($v['mode'] === 'join') {
+            Activity::log($user->store_id, 'team', "{$user->name} joined the team", $user->getKey());
+        }
 
                if (config('app.require_email_verification')) {
             try { $this->sendCode($user); } catch (\Throwable $e) { report($e); }

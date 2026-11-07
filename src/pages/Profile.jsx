@@ -6,11 +6,10 @@ export default function Profile({ D, run, toast, user }) {
   const [pw, setPw] = useState({ current_password: '', new_password: '', confirm: '' })
   const [store, setStore] = useState(user?.store || '')
   const isOwner = user?.perms?.includes('team')
-    const [dp, setDp] = useState('')
-  const [dc, setDc] = useState('')
+  
   const set = k => e => setF({ ...f, [k]: e.target.value })
-   const [orig, setOrig] = useState(null)
-    useEffect(() => {
+  const [orig, setOrig] = useState(null)
+  useEffect(() => {
     api('/profile').then(d => {
       const clean = Object.fromEntries(Object.entries(d).map(([k, v]) => [k, v ?? '']))
       setF(clean); setOrig(clean)
@@ -18,9 +17,9 @@ export default function Profile({ D, run, toast, user }) {
   }, [])
   useEffect(() => { setStore(user?.store || '') }, [user?.store])
 
-if (!f) return <PageSkeleton page="profile" />
-    const dirty = JSON.stringify(f) !== JSON.stringify(orig)
-   const save = async e => {
+  if (!f) return <PageSkeleton page="profile" />
+  const dirty = JSON.stringify(f) !== JSON.stringify(orig)
+  const save = async e => {
     e.preventDefault()
     const ok = await run(() => api('/profile', 'PUT', f), 'Profile saved')
     if (ok) setOrig(f)
@@ -38,14 +37,7 @@ if (!f) return <PageSkeleton page="profile" />
     run(() => api('/store', 'PUT', { name: store }), 'Store renamed')
   }
 
-    const del = async e => {
-    e.preventDefault()
-    try {
-      await api('/account', 'DELETE', { password: dp, confirm: dc })
-      localStorage.removeItem('token'); localStorage.removeItem('user')
-      window.dispatchEvent(new Event('logout'))
-    } catch (x) { toast(x.message) }
-  }
+ 
 
   return (
     <>
@@ -64,7 +56,7 @@ if (!f) return <PageSkeleton page="profile" />
         <input disabled value={f.email} style={{ width: '100%' }} />
         <label>Birthdate</label>
         <input type="date" required max={new Date().toISOString().slice(0, 10)} value={f.birthdate} onChange={set('birthdate')} style={{ width: '100%' }} />
-                <button className="btn" style={{ marginTop: 16 }} disabled={!dirty}>Save changes</button>
+        <button className="btn" style={{ marginTop: 16 }} disabled={!dirty}>Save changes</button>
       </form>
 
       <form className="card" onSubmit={changePw} style={{ marginBottom: 20, maxWidth: 520 }}>
@@ -86,20 +78,8 @@ if (!f) return <PageSkeleton page="profile" />
         </form>
       )}
 
-            <form className="card danger-zone" onSubmit={del} style={{ marginTop: 20, maxWidth: 520 }}>
-        <h3>Delete account</h3>
-        <p style={{ color: 'var(--mute)', margin: '0 0 8px' }}>
-          {isOwner
-            ? 'This permanently deletes your store and all its products, sales and stock records. Remove your team first.'
-            : 'This removes your login and personal details. Sales you made stay in the store’s records, shown as “Deleted user”.'}
-        </p>
-        <label>Your password</label>
-        <input type="password" value={dp} onChange={e => setDp(e.target.value)} style={{ width: '100%' }} />
-        <label>Type DELETE to confirm</label>
-        <input value={dc} onChange={e => setDc(e.target.value)} style={{ width: '100%' }} />
-        <button className="btn danger" style={{ marginTop: 16 }} disabled={!dp || dc !== 'DELETE'}>Delete my account</button>
-      </form>
       
+
     </>
   )
 }

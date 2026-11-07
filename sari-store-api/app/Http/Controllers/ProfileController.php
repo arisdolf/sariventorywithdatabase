@@ -6,7 +6,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-
+use App\Support\Activity;
 class ProfileController extends Controller
 {   
         public function destroy(Request $r)
@@ -33,6 +33,7 @@ class ProfileController extends Controller
                 DB::table('suppliers')->where('store_id', $sid)->delete();
                 DB::table('categories')->where('store_id', $sid)->delete();
                 DB::table('stores')->where('store_id', $sid)->delete();
+                DB::table('activity_log')->where('store_id', $sid)->delete();
             }
             DB::table('profiles')->where('user_id', $id)->delete();
             DB::table('personal_access_tokens')->where('tokenable_type', User::class)->where('tokenable_id', $id)->delete();
@@ -122,6 +123,7 @@ class ProfileController extends Controller
         abort_unless($r->user()->hasPerm('team'), 403, 'Only the store owner can rename the store');
         $v = $r->validate(['name' => 'required|string|max:120']);
         DB::table('stores')->where('store_id', $r->user()->store_id)->update(['name' => trim($v['name'])]);
+        Activity::log($r->user()->store_id, 'settings', 'Renamed the store to ' . trim($v['name']));
         return ['ok' => true];
     }
 }

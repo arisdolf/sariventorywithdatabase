@@ -38,7 +38,7 @@ export default function Dashboard({ D, user, onLogout }) {
           {low.length ? low.map(p => <div key={p.id} style={row}><span>{p.name}</span><span>{p.qty} left</span></div>) : <Empty>Everything is well stocked.</Empty>}
         </div>
         <div className="card"><h3>Recent sales</h3>
-          {D.orders.length ? D.orders.slice(0, 5).map(o => <div key={o.id} style={row}><span>Order #{o.id}</span><span>{peso(o.total)}</span></div>) : <Empty>No sales yet. Record one under New sale.</Empty>}
+          {D.orders.length ? D.orders.slice(0, 5).map(o => <div key={o.id} style={row}><span>Order #{o.no ?? o.id}</span><span>{peso(o.total)}</span></div>) : <Empty>No sales yet. Record one under New sale.</Empty>}
         </div>
       </div>
     </>

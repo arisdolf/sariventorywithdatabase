@@ -95,17 +95,24 @@ nav.side button.out { margin-top: 16px; border: 1px solid var(--line) }
     animation: up .25s ease-out;
   }
   .grab { width: 40px; height: 4px; border-radius: 4px; background: var(--line); margin: 4px auto 16px }
-  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px }
+    .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px }
   .tile {
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
-    min-height: 92px; padding: 12px 6px;
-    border: 1px solid var(--line); border-radius: 16px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    min-height: 76px; padding: 10px 4px;
+    border: 1px solid var(--line); border-radius: 14px;
     background: var(--panel); color: var(--text);
-    font: 600 13px Figtree, sans-serif; text-align: center;
+    font: 600 12px Figtree, sans-serif; text-align: center; line-height: 1.2;
     cursor: pointer;
   }
-  .tile .ic { width: 26px; height: 26px; color: var(--acc) }
+  .tile .ic { width: 24px; height: 24px; color: var(--acc) }
+  
   .tile.on { background: var(--accbg); border-color: var(--acc) }
   .tile.danger, .tile.danger .ic { color: var(--bad) }
   .tile:active { transform: scale(.96) }
 }
+
+/* Group headings */
+.grp { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--mute); padding: 14px 12px 4px }
+nav.side { overflow-y: auto }
+.sheet-grp { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--mute); margin: 12px 4px 8px }
+@media (max-width: 760px) { .sheet { max-height: 85vh; overflow-y: auto } }

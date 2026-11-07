@@ -4,8 +4,9 @@ import StatusPill from '../components/StatusPill'
 import Categories from '../components/Categories'
 import { api } from '../services/api'
 import { peso } from '../utils/format'
-
+import { useConfirm } from '../components/Confirm'
 export default function Products({ D, run, setModal, user }) {
+  const ask = useConfirm()
   const [q, setQ] = useState('')
   const [showCats, setShowCats] = useState(false)
   const costs = user?.perms?.includes('costs')
@@ -24,7 +25,10 @@ export default function Products({ D, run, setModal, user }) {
     ],
     save: v => run(() => p ? api('/products/' + p.id, 'PUT', v) : api('/products', 'POST', v), 'Product saved'),
   })
-  const remove = p => { if (confirm('Delete this product?')) run(() => api('/products/' + p.id, 'DELETE'), 'Product deleted') }
+     const remove = async p => {
+    if (await ask({ title: 'Delete product?', message: `“${p.name}” will be hidden. You can restore it from the Deleted list.`, confirmText: 'Delete', danger: true }))
+      run(() => api('/products/' + p.id, 'DELETE'), 'Product deleted')
+  }
   const restore = p => run(() => api('/products/' + p.id + '/restore', 'POST'), 'Product restored')
   return (
     <>

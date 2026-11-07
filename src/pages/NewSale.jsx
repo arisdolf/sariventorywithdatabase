@@ -43,7 +43,7 @@ export default function NewSale({ D, run, toast, cart, setCart, user }) {
     }, 'Sale completed')
     if (ok) {
       setReceipt({
-        store: user?.store, id: res.order_id, cashier: user?.name,
+        store: user?.store, id: res.order_no, cashier: user?.name,
         at: new Date().toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' }),
         items: cart, total: cartTotal, method, paid: method === 'cash' ? +paid : cartTotal,
       })

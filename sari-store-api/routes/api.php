@@ -6,7 +6,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TeamController as T;
 use App\Http\Controllers\ProfileController as P;
 use App\Http\Controllers\AnalyticsController as A;
-
+use App\Http\Controllers\SettingsController as Se;
+use App\Http\Controllers\ActivityController as Ac;
 // Public: no token needed
 
 Route::post('/forgot-password', [AuthController::class, 'forgot'])->middleware('throttle:5,1');
@@ -26,6 +27,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/products/{id}', [S::class, 'updateProduct']);
     Route::delete('/products/{id}', [S::class, 'destroyProduct']);
     Route::post('/products/{id}/restore', [S::class, 'restoreProduct']);
+
+    Route::get('/activity', [Ac::class, 'index']);
+    Route::get('/notifications', [Se::class, 'feed']);
+    Route::put('/settings/notifications', [Se::class, 'notify']);
+    Route::put('/settings/orders', [Se::class, 'orders']);
 
     Route::post('/categories', [S::class, 'storeCategory']);
     Route::put('/categories/{id}', [S::class, 'updateCategory']);

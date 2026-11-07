@@ -23,8 +23,8 @@ class User extends Authenticatable
 
     // key => [label, permissions]
     const ROLES = [
-       'owner'   => ['Owner',   ['sell', 'products', 'stock', 'suppliers', 'costs', 'team', 'history', 'void', 'analytics']],
-'manager' => ['Manager', ['sell', 'products', 'stock', 'suppliers', 'costs', 'history', 'void', 'analytics']],
+       'owner'   => ['Owner',   ['sell', 'products', 'stock', 'suppliers', 'costs', 'team', 'history', 'void', 'analytics', 'activity']],
+        'manager' => ['Manager', ['sell', 'products', 'stock', 'suppliers', 'costs', 'history', 'void', 'analytics', 'activity']],
         'cashier'   => ['Cashier',   ['sell', 'history']],
         'inventory' => ['Inventory', ['products', 'stock', 'suppliers']],
         'viewer'    => ['Viewer',    []],
@@ -40,10 +40,15 @@ class User extends Authenticatable
         return in_array($p, $this->perms(), true);
     }
 
-    // What the React app is allowed to know about the logged-in user
-       public function toClient(): array
+        public function notifyPrefs(): array
     {
-        $s = DB::table('stores')->where('store_id', $this->store_id)->first(['name', 'store_type']);
+        return (json_decode($this->notify_prefs ?? '', true) ?: [])
+            + ['on' => false, 'sales' => true, 'stock' => true, 'team' => true];
+    }
+
+    public function toClient(): array
+    {
+        $s = DB::table('stores')->where('store_id', $this->store_id)->first(['name', 'store_type', 'order_reset']);
         return [
             'id' => $this->getKey(),
             'name' => $this->name,
@@ -53,6 +58,8 @@ class User extends Authenticatable
             'roleLabel' => self::ROLES[$this->role][0] ?? $this->role,
             'store' => $s->name ?? null,
             'storeType' => $s->store_type ?? null,
+            'orderReset' => $s->order_reset ?? 'daily',
+            'notify' => $this->notifyPrefs(),
             'perms' => $this->perms(),
         ];
     }
