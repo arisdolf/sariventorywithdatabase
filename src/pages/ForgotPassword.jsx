@@ -67,9 +67,9 @@ export default function ForgotPassword({ initialEmail = '', onBack, onDone }) {
         </>}
 
         {err && <p className="auth-err">{err}</p>}
-        {step === 2 && <p className="auth-note warn">Can't find it? Check your <b>Spam</b> or <b>Junk</b> folder.</p>}
+        
         {info && <p className="auth-note">{info}</p>}
-
+          {step === 2 && <p className="auth-note warn">Can't find it? Check your <b>Spam</b> or <b>Junk</b> folder.</p>}
         <button className="btn" style={{ width: '100%', marginTop: 18 }} disabled={busy || (step === 2 && code.length !== 6)}>
           {busy ? 'Please wait…' : step === 1 ? 'Send code' : 'Change password'}
         </button>
