@@ -33,6 +33,7 @@ export default function Verify({ email, onLogin, onBack }) {
         <div className="logo" style={{ padding: 0 }}>Sari<span>ventory</span></div>
         <h2 className="auth-title">Check your email</h2>
         <p className="sub" style={{ marginBottom: 8 }}>We sent a 6-digit code to <b>{email}</b>.</p>
+        <p className="auth-note warn">Can't find it? Check your <b>Spam</b> or <b>Junk</b> folder. It can take up to a minute to arrive.</p>
         <label>Verification code</label>
         <input required autoFocus inputMode="numeric" autoComplete="one-time-code" maxLength={6}
           value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))}

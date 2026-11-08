@@ -6,12 +6,14 @@ export default function Modal({ title, fields, onSave, onClose }) {
     Object.fromEntries(fields.map(f => [f.n, f.v ?? (f.opts && !f.search ? [].concat(f.opts[0])[0] : '')]))
   )
   const [err, setErr] = useState('')
-
-  const submit = e => {
+    const [busy, setBusy] = useState(false)
+    const submit = async e => {
     e.preventDefault()
+    if (busy) return
     const missing = fields.find(f => f.search && !v[f.n])
     if (missing) return setErr('Please pick from the list: ' + missing.l)
-    onSave(v)
+    setBusy(true)
+    try { await onSave(v) } finally { setBusy(false) }
   }
 
   return (
@@ -35,7 +37,7 @@ export default function Modal({ title, fields, onSave, onClose }) {
         {err && <p className="auth-err">{err}</p>}
         <div className="row">
           <button type="button" className="btn ghost" onClick={onClose}>Cancel</button>
-          <button className="btn">Save</button>
+                    <button className="btn" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
         </div>
       </form>
     </dialog></div>

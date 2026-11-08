@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Empty from '../components/Empty'
 import Receipt from '../components/Receipt'
 import { api } from '../services/api'
@@ -9,6 +9,8 @@ const METHODS = [['cash', 'Cash'], ['gcash', 'GCash'], ['maya', 'Maya'], ['other
 export default function NewSale({ D, run, toast, cart, setCart, user }) {
   const [sel, setSel] = useState('')
   const [sq, setSq] = useState('')
+    const [saving, setSaving] = useState(false)
+  const lock = useRef(false)
   const [open, setOpen] = useState(false)
   const [cq, setCq] = useState(1)
   const [method, setMethod] = useState('cash')
@@ -29,26 +31,30 @@ export default function NewSale({ D, run, toast, cart, setCart, user }) {
     setSel(''); setSq(''); setCq(1); setOpen(false)
   }
 
-  const checkout = async () => {
+    const checkout = async () => {
+    if (lock.current) return
     if (method === 'cash' && (paid === '' || Math.round(+paid * 100) < Math.round(cartTotal * 100))) {
       return toast('Cash received is less than the total')
     }
+    lock.current = true; setSaving(true)
     let res
-    const ok = await run(async () => {
-      res = await api('/sales', 'POST', {
-        items: cart.map(c => ({ id: c.id, qty: c.qty })),
-        method,
-        amount_paid: method === 'cash' ? +paid : null,
-      })
-    }, 'Sale completed')
-    if (ok) {
-      setReceipt({
-        store: user?.store, id: res.order_no, cashier: user?.name,
-        at: new Date().toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' }),
-        items: cart, total: cartTotal, method, paid: method === 'cash' ? +paid : cartTotal,
-      })
-      setCart([]); setPaid(''); setMethod('cash')
-    }
+    try {
+      const ok = await run(async () => {
+        res = await api('/sales', 'POST', {
+          items: cart.map(c => ({ id: c.id, qty: c.qty })),
+          method,
+          amount_paid: method === 'cash' ? +paid : null,
+        })
+      }, 'Sale completed')
+      if (ok) {
+        setReceipt({
+          store: user?.store, id: res.order_no, cashier: user?.name,
+          at: new Date().toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' }),
+          items: res.items, total: res.total, method, paid: res.paid,
+        })
+        setCart([]); setPaid(''); setMethod('cash')
+      }
+    } finally { lock.current = false; setSaving(false) }
   }
 
   return (
@@ -100,7 +106,7 @@ export default function NewSale({ D, run, toast, cart, setCart, user }) {
         </div>
       )}
 
-      <button className="btn" disabled={!cart.length} onClick={checkout}>Complete sale</button>
+            <button className="btn" disabled={!cart.length || saving} onClick={checkout}>{saving ? 'Saving…' : 'Complete sale'}</button>
       {receipt && <Receipt r={receipt} onClose={() => setReceipt(null)} />}
     </>
   )

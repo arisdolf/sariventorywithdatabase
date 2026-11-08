@@ -248,7 +248,7 @@ class StoreController extends Controller
             'amount_paid' => 'nullable|numeric|min:0',
         ]);
 
-        [$orderId, $no] = DB::transaction(function () use ($v, $r, $sid) {
+                [$orderId, $no, $total, $lines, $paid] = DB::transaction(function () use ($v, $r, $sid) {
             // Lock the store row so two sales at once cannot get the same number
             $store = DB::table('stores')->where('store_id', $sid)->lockForUpdate()->first(['order_reset']);
             $now = now();
@@ -261,6 +261,7 @@ class StoreController extends Controller
                 'status' => 'completed', 'total_amount' => 0,
             ]);
             $total = 0;
+            $lines = [];
 
             foreach ($v['items'] as $i) {
                 $p = DB::table('products')->where('product_id', $i['id'])->where('store_id', $sid)->lockForUpdate()->first();
@@ -269,6 +270,7 @@ class StoreController extends Controller
                 }
                 $sub = $p->unit_price * $i['qty'];
                 $total += $sub;
+                 $lines[] = ['name' => $p->name, 'qty' => $i['qty'], 'price' => (float) $p->unit_price];
 
                 DB::table('order_items')->insert([
                     'order_id' => $orderId, 'product_id' => $p->product_id, 'quantity' => $i['qty'],
@@ -291,10 +293,11 @@ class StoreController extends Controller
                 'total_amount' => $total, 'payment_method' => $v['method'], 'amount_paid' => $paid,
             ]);
             Activity::log($sid, 'sale', "Sale #$no · {$this->m($total)} · " . count($v['items']) . ' item(s)');
-            return [$orderId, $no];
+            return [$orderId, $no, $total, $lines, $paid];
         });
 
-        return ['ok' => true, 'order_id' => $orderId, 'order_no' => $no];
+                return ['ok' => true, 'order_id' => $orderId, 'order_no' => $no,
+                'total' => (float) $total, 'items' => $lines, 'paid' => (float) $paid];
     }
 
     public function sales(Request $r)
