@@ -8,18 +8,35 @@ use App\Http\Controllers\ProfileController as P;
 use App\Http\Controllers\AnalyticsController as A;
 use App\Http\Controllers\SettingsController as Se;
 use App\Http\Controllers\ActivityController as Ac;
+
 // Public: no token needed
 
-Route::post('/forgot-password', [AuthController::class, 'forgot'])->middleware('throttle:5,1');
-Route::post('/reset-password', [AuthController::class, 'reset'])->middleware('throttle:10,1');
-Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
-Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:10,1');
-Route::post('/rejoin', [AuthController::class, 'rejoin'])->middleware('throttle:10,1');
-Route::post('/verify-email', [AuthController::class, 'verify'])->middleware('throttle:10,1');
-Route::post('/resend-code', [AuthController::class, 'resend'])->middleware('throttle:5,1');
+Route::post('/forgot-password', [AuthController::class, 'forgot'])
+    ->middleware('throttle:5,1');
+
+Route::post('/reset-password', [AuthController::class, 'reset'])
+    ->middleware('throttle:10,1');
+
+Route::post('/login', [AuthController::class, 'login'])
+    ->middleware('throttle:10,1');
+
+Route::post('/register', [AuthController::class, 'register'])
+    ->middleware('throttle:5,1');
+
+Route::post('/rejoin', [AuthController::class, 'rejoin'])
+    ->middleware('throttle:5,1');
+
+Route::post('/verify-email', [AuthController::class, 'verify'])
+    ->middleware('throttle:10,1');
+
+Route::post('/resend-code', [AuthController::class, 'resend'])
+    ->middleware('throttle:5,1');
+
 
 // Private: needs a logged-in token
+
 Route::middleware('auth:sanctum')->group(function () {
+
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/data', [S::class, 'data']);
 
@@ -60,4 +77,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/profile/password', [P::class, 'password']);
     Route::put('/store', [P::class, 'renameStore']);
     Route::delete('/account', [P::class, 'destroy']);
+
 });
