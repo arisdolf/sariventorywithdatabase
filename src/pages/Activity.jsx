@@ -23,7 +23,7 @@ export default function Activity({ toast, embedded, setView }) {
     try {
       const d = await api('/activity?' + p)
       setMembers(d.members); setMore(d.more)
-      setRows(append ? [...rows, ...d.items] : d.items)
+      setRows(prev => append ? [...(prev || []), ...d.items] : d.items)
     } catch (e) { toast(e.message) }
     setBusy(false)
   }

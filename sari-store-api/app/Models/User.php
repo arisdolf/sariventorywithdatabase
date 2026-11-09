@@ -11,7 +11,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'first_name', 'middle_name', 'last_name', 'email', 'birthdate', 'password_hash', 'role', 'store_id', 'terms_accepted_at'])]
+#[Fillable(['name', 'first_name', 'middle_name', 'last_name', 'email', 'birthdate', 'password_hash', 'role', 'store_id', 'pending_store_id', 'terms_accepted_at'])]
 #[Hidden(['password_hash', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -23,11 +23,11 @@ class User extends Authenticatable
 
     // key => [label, permissions]
     const ROLES = [
-       'owner'   => ['Owner',   ['sell', 'products', 'stock', 'suppliers', 'costs', 'team', 'history', 'void', 'analytics', 'activity']],
-        'manager' => ['Manager', ['sell', 'products', 'stock', 'suppliers', 'costs', 'history', 'void', 'analytics', 'activity']],
+       'owner'   => ['Owner',   ['sell', 'products', 'stock', 'suppliers', 'costs', 'team', 'history', 'void', 'analytics', 'activity', 'revenue']],
+        'manager' => ['Manager', ['sell', 'products', 'stock', 'suppliers', 'costs', 'history', 'void', 'analytics', 'activity', 'revenue']],
         'cashier'   => ['Cashier',   ['sell', 'history']],
         'inventory' => ['Inventory', ['products', 'stock', 'suppliers']],
-        'viewer'    => ['Viewer',    []],
+        'viewer'    => ['Viewer',    ['revenue']],
     ];
 
     public function perms(): array

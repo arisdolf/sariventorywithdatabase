@@ -9,7 +9,7 @@ const METHODS = [['cash', 'Cash'], ['gcash', 'GCash'], ['maya', 'Maya'], ['other
 export default function NewSale({ D, run, toast, cart, setCart, user }) {
   const [sel, setSel] = useState('')
   const [sq, setSq] = useState('')
-    const [saving, setSaving] = useState(false)
+  const [saving, setSaving] = useState(false)
   const lock = useRef(false)
   const [open, setOpen] = useState(false)
   const [cq, setCq] = useState(1)
@@ -17,21 +17,27 @@ export default function NewSale({ D, run, toast, cart, setCart, user }) {
   const [paid, setPaid] = useState('')
   const [receipt, setReceipt] = useState(null)
 
-  const pick = D.products.filter(p => p.qty > 0 && p.name.toLowerCase().includes((sel ? '' : sq).trim().toLowerCase()))
+  const pick = D.products.filter(p => p.qty > 0 &&
+    (p.name + ' ' + (p.code || '')).toLowerCase().includes((sel ? '' : sq).trim().toLowerCase()))
+  const byCode = c => c.trim() && D.products.find(p => p.code && p.code.toLowerCase() === c.trim().toLowerCase())
   const choose = p => { setSel(String(p.id)); setSq(p.name); setOpen(false) }
   const cartTotal = cart.reduce((a, c) => a + c.price * c.qty, 0)
   const change = (+paid || 0) - cartTotal
 
-  const addToCart = () => {
-    const p = D.products.find(i => i.id === +sel) || (sq.trim() && pick.length === 1 ? pick[0] : null)
-    if (!p) return toast('Search and pick a product first')
-    const n = Math.max(1, +cq || 1), c = cart.find(i => i.id === p.id), have = (c?.qty || 0) + n
+  const add = (p, n) => {
+    const c = cart.find(i => i.id === p.id), have = (c?.qty || 0) + n
     if (have > p.qty) return toast('Only ' + p.qty + ' in stock')
     setCart(c ? cart.map(i => i.id === p.id ? { ...i, qty: have } : i) : [...cart, { id: p.id, name: p.name, price: p.price, qty: n }])
     setSel(''); setSq(''); setCq(1); setOpen(false)
   }
 
-    const checkout = async () => {
+  const addToCart = () => {
+    const p = D.products.find(i => i.id === +sel) || byCode(sq) || (sq.trim() && pick.length === 1 ? pick[0] : null)
+    if (!p) return toast('Search and pick a product first')
+    add(p, Math.max(1, +cq || 1))
+  }
+
+  const checkout = async () => {
     if (lock.current) return
     if (method === 'cash' && (paid === '' || Math.round(+paid * 100) < Math.round(cartTotal * 100))) {
       return toast('Cash received is less than the total')
@@ -65,7 +71,14 @@ export default function NewSale({ D, run, toast, cart, setCart, user }) {
           <input placeholder="Search or pick a product" value={sq} autoComplete="off"
             onFocus={() => setOpen(true)}
             onChange={e => { setSq(e.target.value); setSel(''); setOpen(true) }}
-            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (pick[0]) choose(pick[0]) } }} />
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                const hit = byCode(sq)
+                if (hit) return add(hit, Math.max(1, +cq || 1))
+                if (pick[0]) choose(pick[0])
+              }
+            }} />
           <button type="button" className="caret" aria-label="Show all products" onClick={() => setOpen(o => !o)}>▾</button>
           {open && <ul className="opts" onMouseDown={e => e.preventDefault()}>
             {pick.length
@@ -77,7 +90,7 @@ export default function NewSale({ D, run, toast, cart, setCart, user }) {
         <button className="btn" onClick={addToCart}>Add to sale</button>
       </div>
       <div className="tw">{cart.length ? <table><thead><tr><th>Item</th><th>Qty</th><th>Subtotal</th><th></th></tr></thead><tbody>
-        {cart.map((c, i) => <tr key={c.id}><td className="main">{c.name}</td><td data-label="Qty">{c.qty}</td><td data-label="Subtotal">{peso(c.price * c.qty)}</td><td className="act"><button className="btn ghost sm" onClick={() => setCart(cart.filter((_, j) => j !== i))}>Remove</button></td></tr>)}
+        {cart.map((c, i) => <tr key={c.id}><td className="main">{c.name}</td><td data-label="Qty">{c.qty}</td><td data-label="Subtotal">{peso(c.price * c.qty)}</td><td className="act"><button className="btn ghost sm" onClick={() => setCart(cart.filter(c2 => c2.id !== c.id))}>Remove</button></td></tr>)}
       </tbody></table> : <Empty>The sale is empty. Add a product above.</Empty>}</div>
 
       <div className="tot">Total: {peso(cartTotal)}</div>
@@ -100,13 +113,13 @@ export default function NewSale({ D, run, toast, cart, setCart, user }) {
             <div style={{ fontWeight: 600, color: change < 0 ? 'var(--bad)' : 'var(--acc)' }}>
               {paid === '' ? 'Enter the cash received'
                 : change < 0 ? 'Short by ' + peso(-change)
-                : 'Change: ' + peso(change)}
+                  : 'Change: ' + peso(change)}
             </div>
           </>}
         </div>
       )}
 
-            <button className="btn" disabled={!cart.length || saving} onClick={checkout}>{saving ? 'Saving…' : 'Complete sale'}</button>
+      <button className="btn" disabled={!cart.length || saving} onClick={checkout}>{saving ? 'Saving…' : 'Complete sale'}</button>
       {receipt && <Receipt r={receipt} onClose={() => setReceipt(null)} />}
     </>
   )

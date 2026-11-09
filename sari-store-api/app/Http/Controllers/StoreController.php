@@ -44,6 +44,19 @@ class StoreController extends Controller
         return $id ?: DB::table('categories')->insertGetId(['store_id' => $sid, 'name' => $name]);
     }
 
+    private function extras(array $v, int $sid, $ignoreId = null): array
+{
+    $code = trim((string) ($v['code'] ?? '')) ?: null;
+    if ($code) {
+        $q = DB::table('products')->where('store_id', $sid)->where('code', $code);
+        if ($ignoreId) $q->where('product_id', '!=', $ignoreId);
+        abort_if($q->exists(), 422, 'Another product already uses that code');
+    }
+    $size = $v['size_value'] ?? null;
+    $unit = $size ? ($v['size_unit'] ?? null) : null;
+    return [$code, $unit ? $size : null, $unit];
+}
+
     // The mode is part of the key, so switching modes starts a fresh count
     private function periodKey(string $mode, Carbon $d): string
     {
@@ -60,10 +73,11 @@ class StoreController extends Controller
         $u = $r->user();
         $sid = $this->sid($r);
 
-        $products = DB::select("SELECT p.product_id id, p.name, p.description, p.low_stock, COALESCE(c.name,'') cat,
-                CAST(p.cost_price AS DOUBLE) cost_price, CAST(p.unit_price AS DOUBLE) price, p.stock_quantity qty
-            FROM products p LEFT JOIN categories c ON c.category_id = p.category_id
-            WHERE p.is_active = 1 AND p.store_id = ? ORDER BY p.name", [$sid]);
+        $products = DB::select("SELECT p.product_id id, p.name, p.description, p.low_stock, p.code,
+        CAST(p.size_value AS DOUBLE) size_value, p.size_unit, COALESCE(c.name,'') cat,
+        CAST(p.cost_price AS DOUBLE) cost_price, CAST(p.unit_price AS DOUBLE) price, p.stock_quantity qty
+    FROM products p LEFT JOIN categories c ON c.category_id = p.category_id
+    WHERE p.is_active = 1 AND p.store_id = ? ORDER BY p.name", [$sid]);
 
         $today = DB::selectOne("SELECT
                 CAST(COALESCE(SUM(oi.subtotal), 0) AS DOUBLE) sales,
@@ -77,6 +91,9 @@ class StoreController extends Controller
             foreach ($products as $p) unset($p->cost_price);
             $today->cost = null;
         }
+         if (!$u->hasPerm('revenue')) {
+            $today->sales = null; $today->items = null; $today->orders = null; $today->cost = null;
+        }
 
         return [
             'me' => $u->toClient(),
@@ -84,8 +101,8 @@ class StoreController extends Controller
             'categories' => DB::select("SELECT category_id id, name FROM categories WHERE store_id = ? ORDER BY name", [$sid]),
             'suppliers' => DB::select("SELECT supplier_id id, name, contact_person contact, phone, email, address
                 FROM suppliers WHERE store_id = ? ORDER BY name", [$sid]),
-            'orders' => DB::select("SELECT order_id id, order_no no, CAST(total_amount AS DOUBLE) total, DATE_FORMAT(order_date,'%Y-%m-%dT%H:%i:%s') date
-                FROM orders WHERE store_id = ? AND status = 'completed' ORDER BY order_id DESC LIMIT 50", [$sid]),
+            'orders' => $u->hasPerm('revenue') ? DB::select("SELECT order_id id, order_no no, CAST(total_amount AS DOUBLE) total, DATE_FORMAT(order_date,'%Y-%m-%dT%H:%i:%s') date
+                FROM orders WHERE store_id = ? AND status = 'completed' ORDER BY order_id DESC LIMIT 50", [$sid]) : [],
             'moves' => DB::select("SELECT m.movement_id id, m.product_id pid, m.type, m.quantity qty, m.remarks,
                     DATE_FORMAT(m.created_at,'%b %e, %Y %l:%i %p') at, COALESCE(u.name,'') who
                 FROM stock_movements m LEFT JOIN users u ON u.user_id = m.user_id
@@ -108,17 +125,21 @@ class StoreController extends Controller
             'cost_price' => 'nullable|numeric|min:0',
             'price' => 'required|numeric|min:0',
             'qty' => 'required|integer|min:0',
+            'code' => 'nullable|string|max:50',
+'size_value' => 'nullable|numeric|min:0',
+'size_unit' => 'required_with:size_value|nullable|in:g,ml',
         ]);
         $cost = $r->user()->hasPerm('costs') ? ($v['cost_price'] ?? 0) : 0;
         abort_if($v['price'] < $cost, 422, 'Selling price cannot be below the capital');
-
-        DB::transaction(function () use ($v, $sid, $cost) {
-            $id = DB::table('products')->insertGetId([
-                'low_stock' => $v['low_stock'] ?? 10,
-                'store_id' => $sid, 'name' => $v['name'], 'description' => $v['description'] ?? null,
-                'category_id' => $this->catId($v['cat'] ?? '', $sid),
-                'cost_price' => $cost, 'unit_price' => $v['price'], 'stock_quantity' => $v['qty'],
-            ]);
+        [$code, $size, $unit] = $this->extras($v, $sid);
+        DB::transaction(function () use ($v, $sid, $cost, $code, $size, $unit) {
+    $id = DB::table('products')->insertGetId([
+        'low_stock' => $v['low_stock'] ?? 10,
+        'store_id' => $sid, 'name' => $v['name'], 'description' => $v['description'] ?? null,
+        'code' => $code, 'size_value' => $size, 'size_unit' => $unit,
+        'category_id' => $this->catId($v['cat'] ?? '', $sid),
+        'cost_price' => $cost, 'unit_price' => $v['price'], 'stock_quantity' => $v['qty'],
+    ]);
             if ($v['qty'] > 0) $this->log($sid, $id, 'IN', $v['qty'], 'Opening stock');
         });
         Activity::log($sid, 'product', "Added product {$v['name']} ({$this->m($v['price'])}, {$v['qty']} in stock)");
@@ -135,22 +156,26 @@ class StoreController extends Controller
             'cost_price' => 'nullable|numeric|min:0',
             'price' => 'required|numeric|min:0',
             'qty' => 'required|integer|min:0',
+            'code' => 'nullable|string|max:50',
+'size_value' => 'nullable|numeric|min:0',
+'size_unit' => 'required_with:size_value|nullable|in:g,ml',
         ]);
         $mine = DB::table('products')->where('product_id', $id)->where('store_id', $sid);
         $old = (clone $mine)->first();
         abort_unless($old, 404, 'Product not found');
-
+        [$code, $size, $unit] = $this->extras($v, $sid, $id);
         $canCost = $r->user()->hasPerm('costs');
         $cost = $canCost ? ($v['cost_price'] ?? 0) : $old->cost_price;
         abort_if($v['price'] < $cost, 422, 'Selling price cannot be below the capital');
 
-        DB::transaction(function () use ($v, $mine, $old, $canCost, $cost, $sid, $id) {
-            $row = [
-                'low_stock' => $v['low_stock'] ?? 10,
-                'name' => $v['name'], 'description' => $v['description'] ?? null,
-                'category_id' => $this->catId($v['cat'] ?? '', $sid),
-                'unit_price' => $v['price'], 'stock_quantity' => $v['qty'],
-            ];
+        DB::transaction(function () use ($v, $mine, $old, $canCost, $cost, $sid, $id, $code, $size, $unit) {
+    $row = [
+        'low_stock' => $v['low_stock'] ?? 10,
+        'name' => $v['name'], 'description' => $v['description'] ?? null,
+        'code' => $code, 'size_value' => $size, 'size_unit' => $unit,
+        'category_id' => $this->catId($v['cat'] ?? '', $sid),
+        'unit_price' => $v['price'], 'stock_quantity' => $v['qty'],
+    ];
             if ($canCost) $row['cost_price'] = $cost;
             $mine->update($row);
             if ($v['qty'] != $old->stock_quantity) {

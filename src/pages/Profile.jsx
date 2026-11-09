@@ -7,7 +7,7 @@ export default function Profile({ D, run, toast, user }) {
   const [store, setStore] = useState(user?.store || '')
   const isOwner = user?.perms?.includes('team')
   
-  const set = k => e => setF({ ...f, [k]: e.target.value })
+  const set = k => e => { const val = e.target.value; setF(prev => ({ ...prev, [k]: val })) }
   const [orig, setOrig] = useState(null)
   useEffect(() => {
     api('/profile').then(d => {

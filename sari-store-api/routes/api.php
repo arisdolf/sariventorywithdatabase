@@ -71,6 +71,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/team/code', [T::class, 'newCode']);
     Route::put('/team/{id}', [T::class, 'update']);
     Route::delete('/team/{id}', [T::class, 'destroy']);
+    Route::post('/team/{id}/approve', [T::class, 'approve']);
+    Route::post('/team/{id}/decline', [T::class, 'decline']);
+    Route::post('/team/{id}/suspend', [T::class, 'suspend']);
+    Route::post('/team/{id}/reactivate', [T::class, 'reactivate']);
 
     Route::get('/profile', [P::class, 'show']);
     Route::put('/profile', [P::class, 'update']);

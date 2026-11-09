@@ -15,10 +15,13 @@ class AnalyticsController extends Controller
         $sid = $u->store_id;
         abort_unless($sid, 403, 'This account is not part of a store');
 
+        // Quick ranges send unit + n. Custom ranges send from + to (YYYY-MM-DD, both days included).
         $v = $r->validate([
             'group' => 'required|in:daily,weekly,monthly,yearly',
-            'unit'  => 'required|in:months,years',
-            'n'     => 'required|integer|in:1,2,3,4,5,6,7,8,9,10,12',
+            'from'  => 'required_with:to|nullable|date_format:Y-m-d',
+            'to'    => 'required_with:from|nullable|date_format:Y-m-d',
+            'unit'  => 'required_without:from|nullable|in:months,years',
+            'n'     => 'required_without:from|nullable|integer|in:1,2,3,4,5,6,7,8,9,10,12',
         ]);
 
         // "Account age" = when the store owner signed up (falls back to the first sale)
@@ -35,20 +38,45 @@ class AnalyticsController extends Controller
             'age_years'  => (int) floor($start->diffInYears($now)),
         ];
 
-        $n = (int) $v['n'];
-        $limit = $v['unit'] === 'years' ? $meta['age_years'] : max(1, $meta['age_months']);
-        abort_if($n > $limit, 422, 'Your store is not old enough for that range yet');
-
-        $from = ($v['unit'] === 'years' ? $now->copy()->subYearsNoOverflow($n) : $now->copy()->subMonthsNoOverflow($n))->startOfDay();
-        if ($from->lt($start)) $from = $start->copy();
-
         $g = $v['group'];
+
+        if (!empty($v['from'])) {
+            /* ---------- Custom range ---------- */
+            $reqFrom = Carbon::parse($v['from'])->startOfDay();
+            $reqTo = Carbon::parse($v['to'])->endOfDay();
+            abort_if($reqFrom->gt($reqTo), 422, 'The start date must be before the end date');
+
+            // Size of the range the person asked for, in months
+            $span = (int) floor($reqFrom->diffInMonths($reqTo)) + 1;
+            abort_if($span > 60, 422, 'Please pick a range of 5 years or less');
+            abort_unless(match ($g) {
+                'daily'   => $span <= 3,
+                'weekly'  => $span <= 12,
+                'monthly' => $span >= 2,
+                'yearly'  => $span >= 24,
+            }, 422, 'That grouping does not fit the date range');
+
+            // Do not show time before the store existed or time that has not happened yet
+            $from = $reqFrom->lt($start) ? $start->copy() : $reqFrom->copy();
+            $end = $reqTo->gt($now) ? $now->copy() : $reqTo->copy();
+        } else {
+            /* ---------- Quick range (unchanged) ---------- */
+            $n = (int) $v['n'];
+            $limit = $v['unit'] === 'years' ? $meta['age_years'] : max(1, $meta['age_months']);
+            abort_if($n > $limit, 422, 'Your store is not old enough for that range yet');
+
+            $from = ($v['unit'] === 'years' ? $now->copy()->subYearsNoOverflow($n) : $now->copy()->subMonthsNoOverflow($n))->startOfDay();
+            if ($from->lt($start)) $from = $start->copy();
+            $end = $now->copy();
+        }
+
         $canCost = $u->hasPerm('costs');
 
         $rows = DB::select("SELECT o.order_date d, o.total_amount total,
                 (SELECT COALESCE(SUM(oi.unit_cost * oi.quantity), 0) FROM order_items oi WHERE oi.order_id = o.order_id) cost
             FROM orders o
-            WHERE o.store_id = ? AND o.status = 'completed' AND o.order_date >= ?", [$sid, $from]);
+            WHERE o.store_id = ? AND o.status = 'completed' AND o.order_date >= ? AND o.order_date <= ?",
+            [$sid, $from, $end]);
 
         $key = fn(Carbon $d) => match ($g) {
             'daily'   => $d->format('Y-m-d'),
@@ -71,7 +99,7 @@ class AnalyticsController extends Controller
             'monthly' => $from->copy()->startOfMonth(),
             'yearly'  => $from->copy()->startOfYear(),
         };
-        while ($cur->lte($now)) {
+        while ($cur->lte($end)) {
             $buckets[$key($cur)] = ['key' => $key($cur), 'label' => $label($cur), 'sales' => 0.0, 'orders' => 0, 'profit' => 0.0];
             match ($g) {
                 'daily'   => $cur->addDay(),

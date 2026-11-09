@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 
 export default function SearchSelect({ value, onChange, options, placeholder = 'Search…' }) {
   const [q, setQ] = useState('')
@@ -11,7 +11,7 @@ export default function SearchSelect({ value, onChange, options, placeholder = '
   const list = opts.filter(([, l]) => l.toLowerCase().includes(q.trim().toLowerCase()))
 
   // Size the list to the space actually left on screen (keyboard included on most phones)
-  const place = () => {
+  const place = useCallback(() => {
     if (!box.current) return
     const r = box.current.getBoundingClientRect()
     const vh = window.visualViewport?.height ?? window.innerHeight
@@ -24,7 +24,7 @@ export default function SearchSelect({ value, onChange, options, placeholder = '
       top: up ? 'auto' : r.bottom + 4,
       bottom: up ? vh - r.top + 4 : 'auto',
     })
-  }
+  }, [])
 
   useEffect(() => {
     if (!open) return

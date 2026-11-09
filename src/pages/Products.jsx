@@ -8,15 +8,24 @@ import { useConfirm } from '../components/Confirm'
 export default function Products({ D, run, setModal, user }) {
   const ask = useConfirm()
   const [q, setQ] = useState('')
+  const [cat, setCat] = useState('')
   const [showCats, setShowCats] = useState(false)
   const costs = user?.perms?.includes('costs')
-  const list = D.products.filter(p => p.name.toLowerCase().includes(q.toLowerCase()))
+  const cats = D.categories || []
+const active = cat === '' || cat === '__none' || cats.some(c => c.name === cat) ? cat : '' // falls back to "All" if that category was deleted
+const list = D.products.filter(p =>
+  (p.name.toLowerCase().includes(q.toLowerCase()) || (p.code || '').toLowerCase().includes(q.toLowerCase())) &&
+  (active === '' || (active === '__none' ? !p.cat : p.cat === active))
+)
   const [showArch, setShowArch] = useState(false)
   const form = p => setModal({
     title: p ? 'Edit product' : 'Add product',
     fields: [
       { n: 'name', l: 'Product name', v: p?.name, req: 1 },
       { n: 'description', l: 'Description (optional)', v: p?.description },
+      { n: 'code', l: 'Product code / barcode (optional)', v: p?.code },
+    { n: 'size_unit', l: 'Measured in', opts: [['', 'Not measured'], ['g', 'Grams (food)'], ['ml', 'Milliliters (drinks)']], v: p?.size_unit ?? '' },
+{ n: 'size_value', l: 'Amount per item (g or ml)', t: 'number', v: p?.size_value },
       { n: 'cat', l: 'Category', opts: [['', 'No category'], ...(D.categories || []).map(c => c.name)], v: p?.cat },
       ...(costs ? [{ n: 'cost_price', l: 'Capital / cost per item (₱)', t: 'number', v: p?.cost_price ?? 0, req: 1 }] : []),
       { n: 'price', l: 'Selling price (₱)', t: 'number', v: p?.price, req: 1 },
@@ -30,11 +39,18 @@ export default function Products({ D, run, setModal, user }) {
       run(() => api('/products/' + p.id, 'DELETE'), 'Product deleted')
   }
   const restore = p => run(() => api('/products/' + p.id + '/restore', 'POST'), 'Product restored')
+
+  
   return (
     <>
       <h1>Products</h1><p className="sub">Add, edit and track what you sell.</p>
       <div className="bar">
         <input placeholder="Search products" value={q} onChange={e => setQ(e.target.value)} style={{ flex: 1, minWidth: 160 }} />
+<select value={active} onChange={e => setCat(e.target.value)} aria-label="Filter by category">
+  <option value="">All categories</option>
+  {cats.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+  <option value="__none">No category</option>
+</select>
         {(D.archived || []).length > 0 && (
           <button className="btn ghost" onClick={() => setShowArch(s => !s)}>Deleted ({D.archived.length})</button>
         )}
@@ -58,6 +74,8 @@ export default function Products({ D, run, setModal, user }) {
           <tr>
             <th>Name</th>
             <th>Category</th>
+            <th>Code</th>
+            <th>Size</th>
             {costs && <th>Capital</th>}
             <th>Selling price</th>
             {costs && <th>Profit</th>}
@@ -72,6 +90,8 @@ export default function Products({ D, run, setModal, user }) {
               {p.description && <div style={{ fontWeight: 400, fontSize: 13, color: 'var(--mute)' }}>{p.description}</div>}
             </div></td>
             <td data-label="Category">{p.cat || '—'}</td>
+            <td data-label="Code">{p.code || '—'}</td>
+<td data-label="Size">{p.size_value ? `${p.size_value} ${p.size_unit}` : '—'}</td>
             {costs && <td data-label="Capital">{peso(p.cost_price ?? 0)}</td>}
             <td data-label="Selling price">{peso(p.price)}</td>
             {costs && <td data-label="Profit / item">{peso(p.price - (p.cost_price ?? 0))}</td>}

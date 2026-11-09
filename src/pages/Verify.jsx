@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '../services/api'
 
-export default function Verify({ email, onLogin, onBack }) {
+export default function Verify({ email, onLogin, onPending, onBack }) {
   const [code, setCode] = useState('')
   const [err, setErr] = useState('')
   const [info, setInfo] = useState('')
@@ -14,10 +14,11 @@ export default function Verify({ email, onLogin, onBack }) {
     return () => clearTimeout(t)
   }, [wait])
 
+  
   const submit = async e => {
     e.preventDefault()
     setBusy(true); setErr(''); setInfo('')
-    try { onLogin(await api('/verify-email', 'POST', { email, code })) }
+    try { const res = await api('/verify-email', 'POST', { email, code }); res.pending ? onPending() : onLogin(res) }
     catch (x) { setErr(x.message) }
     setBusy(false)
   }

@@ -7,11 +7,12 @@ import ForgotPassword from './ForgotPassword'
 const TODAY = new Date().toISOString().slice(0, 10)
 
 // Defined outside the page so inputs keep focus while typing
-function Shell({ title, sub, children }) {
+function Shell({ title, sub, children, onHome }) {
   return (
     <div className="login-wrap">
       <div className="login">
-        <div className="logo" style={{ padding: 0 }}>Sari<span>ventory</span></div>
+        {onHome && <button type="button" className="link" onClick={onHome}>‹ Back to home</button>}
+        <div className="logo" style={{ padding: '10px 0 0' }}>Sari<span>ventory</span></div>
         <h2 className="auth-title">{title}</h2>
         <p className="sub" style={{ marginBottom: 8 }}>{sub}</p>
         {children}
@@ -22,9 +23,12 @@ function Shell({ title, sub, children }) {
 
 const Field = ({ label, ...p }) => <><label>{label}</label><input {...p} /></>
 
-export default function Login({ onLogin }) {
+export default function Login({ onLogin, start = 'login', onHome }) {
+  
   const [showTerms, setShowTerms] = useState(false)
-  const [screen, setScreen] = useState('login') // login | signup
+  const [waiting, setWaiting] = useState(false)
+  
+ const [screen, setScreen] = useState(start) // login | signup
   const [kind, setKind] = useState('create')     // create | join (signup only)
   const [needStore, setNeedStore] = useState(false) // shown only when login says "no store"
   const [f, setF] = useState({
@@ -36,10 +40,10 @@ export default function Login({ onLogin }) {
     const [pending, setPending] = useState(null) // email waiting for a code
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
-  const set = k => e => setF({ ...f, [k]: e.target.value })
+  const set = k => e => { const val = e.target.value; setF(prev => ({ ...prev, [k]: val })) }
 
   const go = (s, store = false) => { setScreen(s); setErr(''); setNeedStore(store) }
-  const finish = res => res.needs_verification ? setPending(res.email) : onLogin(res)
+  const finish = res => res.needs_verification ? setPending(res.email) : res.pending ? setWaiting(true) : onLogin(res)
   const submit = async e => {
     e.preventDefault()
     setErr('')
@@ -74,13 +78,20 @@ export default function Login({ onLogin }) {
       onDone={() => { setForgot(false); setF({ ...f, password: '' }); setNotice('Password changed. Log in with your new password.') }}
     />
   )
-    if (pending) return <Verify email={pending} onLogin={onLogin} onBack={() => { setPending(null); go('login') }} />
+   if (pending) return <Verify email={pending} onLogin={onLogin} onPending={() => { setPending(null); setWaiting(true) }} onBack={() => { setPending(null); go('login') }} />
+if (waiting) return (
+  <Shell title="Waiting for approval" sub="The store owner needs to confirm you before you can come in.">
+    <p className="auth-note">We told the owner about your request. Log in again after they approve you.</p>
+    <button className="btn" style={{ width: '100%', marginTop: 18 }} onClick={() => { setWaiting(false); go('login') }}>Back to log in</button>
+  </Shell>
+)
   /* ---------- Log in ---------- */
   if (screen === 'login') return (
-    <Shell title="Welcome back" sub="Log in to manage your store.">
-      <form onSubmit={submit}>
+  <Shell title="Welcome back" sub="Log in to manage your store." onHome={onHome}>
+    <form onSubmit={submit}>
+      {notice && <p className="auth-note">{notice}</p>}
         
-        {notice && <p className="auth-note">{notice}</p>}
+        
         <Field label="Email" type="email" required autoFocus value={f.email} onChange={set('email')} />
         <Field label="Password" type="password" required value={f.password} onChange={set('password')} />
         <p style={{ margin: '8px 0 0', textAlign: 'right' }}>
@@ -106,7 +117,7 @@ export default function Login({ onLogin }) {
 
   /* ---------- Create account ---------- */
   return (
-    <Shell title="Create your account" sub="Start your own store, or join one with a code.">
+    <Shell title="Create your account" sub="Start your own store, or join one with a code." onHome={onHome}>
       <form onSubmit={submit}>
         <div className="seg">
           <button type="button" className={kind === 'create' ? 'on' : ''} onClick={() => setKind('create')}>Start a store</button>

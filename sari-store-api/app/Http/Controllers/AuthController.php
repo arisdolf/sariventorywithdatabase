@@ -13,6 +13,18 @@ use App\Support\Activity;
 class AuthController extends Controller
 {
 
+private function suspended()
+{
+    return response()->json(['message' => 'Your account is suspended. Please contact the store owner.'], 403);
+}
+
+private function enter(User $user)
+{
+    if ($user->status === 'suspended') return $this->suspended();
+    if (!$user->store_id && $user->pending_store_id) return ['pending' => true, 'email' => $user->email];
+    return $this->session($user);
+}
+
     public function forgot(Request $r)
     {
         $v = $r->validate(['email' => 'required|email']);
@@ -100,7 +112,7 @@ class AuthController extends Controller
 
         DB::table('users')->where('user_id', $user->getKey())->update(['email_verified_at' => now()]);
         DB::table('email_verifications')->where('user_id', $user->getKey())->delete();
-        return $this->session($user->fresh());
+        return $this->enter($user->fresh());
     }
 
     public function resend(Request $r)
@@ -145,24 +157,25 @@ class AuthController extends Controller
             return response()->json(['message' => 'Please verify your email first', 'needs_verification' => true, 'email' => $user->email], 403);
         }
 
-                if ($user->store_id) {
-            $isOwner = DB::table('stores')
-                ->where('store_id', $user->store_id)
-                ->where('owner_id', $user->getKey())
-                ->exists();
+               if ($user->status === 'suspended') return $this->suspended();
+if ($user->pending_store_id) {
+    return response()->json(['message' => 'Your request is still waiting for the store owner.'], 422);
+}
+if ($user->store_id) {
+    $isOwner = DB::table('stores')->where('store_id', $user->store_id)->where('owner_id', $user->getKey())->exists();
+    return response()->json([
+        'message' => $isOwner ? "Store owners can't join other stores."
+            : 'You already belong to a store. Ask its owner to remove you first.',
+    ], 422);
+}
+$store = DB::table('stores')->where('join_code', strtoupper(trim($v['code'])))->first();
+if (!$store) return response()->json(['message' => 'That store code does not exist'], 422);
 
-            return response()->json([
-                'message' => $isOwner
-                    ? "Store owners can't join other stores."
-                    : 'You already belong to a store. Ask its owner to remove you first.',
-            ], 422);
-        }
-        $store = DB::table('stores')->where('join_code', strtoupper(trim($v['code'])))->first();
-        if (!$store) return response()->json(['message' => 'That store code does not exist'], 422);
+$user->forceFill(['pending_store_id' => $store->store_id, 'role' => self::JOIN_ROLE])->save();
+Activity::log($store->store_id, 'team', "{$user->name} asked to join the team", $user->getKey());
+return ['pending' => true, 'email' => $user->email];
 
-        $user->forceFill(['store_id' => $store->store_id, 'role' => self::JOIN_ROLE])->save();
-        Activity::log($store->store_id, 'team', "{$user->name} joined the team", $user->getKey());
-        return $this->session($user->fresh());
+    
     }
 
     public function login(Request $r)
@@ -173,6 +186,8 @@ class AuthController extends Controller
         if (!$user || !Hash::check($v['password'], $user->getAuthPassword())) {
             return response()->json(['message' => 'Wrong email or password'], 401);
         }
+        if ($user->status === 'suspended') return $this->suspended();
+        
                 if (config('app.require_email_verification') && !$user->email_verified_at) {
             try { $this->sendCode($user); } catch (\Throwable $e) { report($e); }
             return response()->json([
@@ -181,13 +196,10 @@ class AuthController extends Controller
             ], 403);
         }
 
-               if (!$user->store_id) {
-            return response()->json([
-                'message' => 'Your account is not in a store yet.',
-                'needs_store' => true,
-            ], 403);
-        }
-        return $this->session($user);
+               if (!$user->store_id && !$user->pending_store_id) {
+    return response()->json(['message' => 'Your account is not in a store yet.', 'needs_store' => true], 403);
+}
+return $this->enter($user);
     }
 
     public function register(Request $r)
@@ -204,17 +216,19 @@ class AuthController extends Controller
             'code' => 'required_if:mode,join|nullable|string|max:20',
              'store_type' => ['required_if:mode,create', 'nullable', Rule::in(self::STORE_TYPES)],
             'accept_terms' => 'accepted',
+            
         ],
         ['accept_terms.accepted' => 'Please agree to the Terms and Conditions']);
 
         $store = null;
+        
         if ($v['mode'] === 'join') {
             $store = DB::table('stores')->where('join_code', strtoupper(trim($v['code'])))->first();
             if (!$store) return response()->json(['message' => 'That store code does not exist'], 422);
-        }
-
-        $user = DB::transaction(function () use ($v, $store) {
+        } 
             
+        $user = DB::transaction(function () use ($v, $store) {
+                $pendingSid = null;
             if ($v['mode'] === 'create') {
     $sid = DB::table('stores')->insertGetId([
     'name' => $v['store_name'], 'join_code' => self::makeCode(), 'store_type' => $v['store_type'],
@@ -224,9 +238,10 @@ class AuthController extends Controller
     }
             $role = 'owner';
             } else {
-                $sid = $store->store_id;
-                $role = self::JOIN_ROLE;
-            }
+    $sid = null;
+    $pendingSid = $store->store_id;
+    $role = self::JOIN_ROLE;
+}
             $u = User::create([
                     'terms_accepted_at' => now(),
     'first_name'    => trim($v['first_name']),
@@ -237,7 +252,8 @@ class AuthController extends Controller
     'birthdate'     => $v['birthdate'],
     'password_hash' => $v['password'], // hashed by the model
     'role'          => $role,
-    'store_id'      => $sid,
+    'store_id' => $sid, 'pending_store_id' => $pendingSid,
+    
 ]);
             if ($role === 'owner') {
                 DB::table('stores')->where('store_id', $sid)->update(['owner_id' => $u->getKey()]);
@@ -246,15 +262,15 @@ class AuthController extends Controller
         });
 
                 if ($v['mode'] === 'join') {
-            Activity::log($user->store_id, 'team', "{$user->name} joined the team", $user->getKey());
-        }
+    Activity::log($store->store_id, 'team', "{$user->name} asked to join the team", $user->getKey());
+}
 
                if (config('app.require_email_verification')) {
             try { $this->sendCode($user); } catch (\Throwable $e) { report($e); }
             return ['needs_verification' => true, 'email' => $user->email];
         }
-        DB::table('users')->where('user_id', $user->getKey())->update(['email_verified_at' => now()]);
-        return $this->session($user->fresh());
+       DB::table('users')->where('user_id', $user->getKey())->update(['email_verified_at' => now()]);
+        return $this->enter($user->fresh());
     }
 
     public function logout(Request $r)

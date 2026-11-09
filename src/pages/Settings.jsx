@@ -1,6 +1,4 @@
 import { useState } from 'react'
-import Analytics from './Analytics'
-import Activity from './Activity'
 import { api } from '../services/api'
 import { ask, show, supported } from '../utils/notify'
 

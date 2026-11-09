@@ -27,6 +27,7 @@ class ProfileController extends Controller
 
         DB::transaction(function () use ($id, $sid, $isOwner) {
             if ($isOwner) { // the owner leaving takes the whole store with them
+            DB::table('users')->where('pending_store_id', $sid)->update(['pending_store_id' => null]);
                 DB::table('orders')->where('store_id', $sid)->delete(); // order items go with them
                 DB::table('stock_movements')->where('store_id', $sid)->delete();
                 DB::table('products')->where('store_id', $sid)->delete();

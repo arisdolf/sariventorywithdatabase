@@ -4,7 +4,7 @@ import { api } from '../services/api'
 export default function StockMovements({ D, run, setModal }) {
 
   const pname = id => D.products.find(p => p.id === id)?.name || 'Deleted product'
-  const opts = D.products.map(p => [p.id, p.name + ' (' + p.qty + ' left)'])
+  const opts = D.products.map(p => [p.id, p.name + (p.code ? ' · ' + p.code : '') + ' (' + p.qty + ' left)'])
 
   const addStock = () => setModal({
     title: 'Add stock',

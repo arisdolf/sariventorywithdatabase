@@ -8,6 +8,7 @@ const PERM = {
   suppliers: 'manage suppliers', costs: 'see capital and profit', team: 'manage the team',
   history: 'see sales history', void: 'void sales',
     analytics: 'see analytics', activity: 'see the activity center',
+      revenue: 'see store-wide sales totals',
 }
 
 export default function Team({ user, toast }) {
@@ -25,10 +26,18 @@ export default function Team({ user, toast }) {
     if (await ask({ title: 'Make a new code?', message: 'The old store code will stop working.', confirmText: 'Make new code' }))
       act(() => api('/team/code', 'POST'), 'New code created')
   }
-  const remove = async m => {
-    if (await ask({ title: 'Remove from team?', message: `${m.name} will lose access to the store.`, confirmText: 'Remove', danger: true }))
-      act(() => api('/team/' + m.id, 'DELETE'), 'Member removed')
-  }
+ 
+
+  const decide = (m, what) => act(() => api('/team/' + m.id + '/' + what, 'POST'), what === 'approve' ? 'Member approved' : 'Request declined')
+const reactivate = m => act(() => api('/team/' + m.id + '/reactivate', 'POST'), 'Account reactivated')
+const suspend = async m => {
+  if (await ask({ title: 'Suspend account?', message: `${m.name} will be logged out and can't log in until you reactivate them.`, confirmText: 'Suspend' }))
+    act(() => api('/team/' + m.id + '/suspend', 'POST'), 'Account suspended')
+}
+const remove = async m => {
+  if (await ask({ title: 'Remove permanently?', message: `${m.name} will be removed from the store for good. To pause them instead, use Suspend.`, confirmText: 'Remove', danger: true }))
+    act(() => api('/team/' + m.id, 'DELETE'), 'Member removed')
+}
 
 if (!t) return <PageSkeleton page="team" />
 
@@ -44,15 +53,35 @@ if (!t) return <PageSkeleton page="team" />
           <button className="btn ghost" onClick={newCode}>Make a new code</button>
         </div>
       </div>
-
+    {t.requests?.length > 0 && (
+        <div className="card" style={{ marginBottom: 20 }}>
+          <h3>Waiting for approval</h3>
+          {t.requests.map(m => (
+            <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '8px 0', borderTop: '1px solid var(--line)' }}>
+              <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}><b>{m.name}</b><br /><small style={{ color: 'var(--mute)' }}>{m.email}</small></span>
+              <span style={{ display: 'flex', gap: 8, flex: 'none' }}>
+                <button className="btn sm" onClick={() => decide(m, 'approve')}>Approve</button>
+                <button className="btn ghost sm" onClick={() => decide(m, 'decline')}>Decline</button>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="tw">{t.members.length ? <table>
         <thead><tr><th>Name</th><th>Email</th><th>Role</th><th></th></tr></thead>
         <tbody>
+          {t.requests?.length > 0 && (
+  <div className="card" style={{ marginBottom: 20 }}>
+    <h3>Waiting for approval</h3>
+    
+  </div>
+)}
           {t.members.map(m => {
             const fixed = m.role === 'owner' || m.id === user.id
             return (
               <tr key={m.id}>
-                <td className="main">{m.name}{m.id === user.id && ' (you)'}</td>
+               <td className="main">{m.name}{m.id === user.id && ' (you)'}
+  {m.status === 'suspended' && <span className="pill low out" style={{ marginLeft: 8 }}>Suspended</span>}</td>
                 <td data-label="Email">{m.email}</td>
                 <td data-label="Role">
                   {fixed
@@ -61,7 +90,12 @@ if (!t) return <PageSkeleton page="team" />
                         {t.roles.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
                       </select>}
                 </td>
-                <td className="act">{!fixed && <button className="btn ghost sm" onClick={() => remove(m)}>Remove</button>}</td>
+                <td className="act">{!fixed && <>
+  {m.status === 'suspended'
+    ? <button className="btn ghost sm" onClick={() => reactivate(m)}>Reactivate</button>
+    : <button className="btn ghost sm" onClick={() => suspend(m)}>Suspend</button>}{' '}
+  <button className="btn ghost sm" onClick={() => remove(m)}>Remove</button>
+</>}</td>
               </tr>
             )
           })}
