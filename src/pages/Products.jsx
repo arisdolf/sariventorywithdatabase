@@ -19,21 +19,23 @@ const list = D.products.filter(p =>
 )
   const [showArch, setShowArch] = useState(false)
   const form = p => setModal({
-    title: p ? 'Edit product' : 'Add product',
-    fields: [
-      { n: 'name', l: 'Product name', v: p?.name, req: 1 },
-      { n: 'description', l: 'Description (optional)', v: p?.description },
-      { n: 'code', l: 'Product code / barcode (optional)', v: p?.code },
-    { n: 'size_unit', l: 'Measured in', opts: [['', 'Not measured'], ['g', 'Grams (food)'], ['ml', 'Milliliters (drinks)']], v: p?.size_unit ?? '' },
-{ n: 'size_value', l: 'Amount per item (g or ml)', t: 'number', v: p?.size_value },
-      { n: 'cat', l: 'Category', opts: [['', 'No category'], ...(D.categories || []).map(c => c.name)], v: p?.cat },
-      ...(costs ? [{ n: 'cost_price', l: 'Capital / cost per item (₱)', t: 'number', v: p?.cost_price ?? 0, req: 1 }] : []),
-      { n: 'price', l: 'Selling price (₱)', t: 'number', v: p?.price, req: 1 },
-      { n: 'low_stock', l: 'Warn me when stock is at or below', t: 'number', v: p?.low_stock ?? 10, req: 1 },
-      { n: 'qty', l: 'Stock quantity', t: 'number', v: p?.qty ?? 0, req: 1 },
-    ],
-    save: v => run(() => p ? api('/products/' + p.id, 'PUT', v) : api('/products', 'POST', v), 'Product saved'),
-  })
+  title: p ? 'Edit product' : 'Add product',
+  fields: [
+    { n: 'name', l: 'Product name', v: p?.name, req: 1 },
+    { n: 'description', l: 'Description (optional)', v: p?.description },
+    { n: 'code', l: 'Product code / barcode (optional)', v: p?.code },
+    { n: 'size_unit', l: 'Measured in', v: p?.size_unit ?? '', opts: [['', 'Not measured'], ['g', 'Grams (g)'], ['kg', 'Kilograms (kg)'], ['ml', 'Milliliters (ml)'], ['l', 'Liters (L)']] },
+    { n: 'size_value', l: 'Amount per item', t: 'number', v: p?.size_value, req: 1, show: v => v.size_unit },
+    { n: 'cat', l: 'Category', opts: [['', 'No category'], ...(D.categories || []).map(c => c.name)], v: p?.cat },
+    ...(costs ? [{ n: 'cost_price', l: 'Capital / cost per item (₱)', t: 'number', v: p?.cost_price ?? 0, req: 1 }] : []),
+    { n: 'price', l: 'Selling price (₱)', t: 'number', v: p?.price, req: 1 },
+    { n: 'low_stock', l: 'Warn me when stock is at or below', t: 'number', v: p?.low_stock ?? 10, req: 1 },
+  ],
+  save: v => {
+    const body = { ...v, size_value: v.size_unit ? v.size_value : '' }
+    return run(() => p ? api('/products/' + p.id, 'PUT', body) : api('/products', 'POST', body), 'Product saved')
+  },
+})
      const remove = async p => {
     if (await ask({ title: 'Delete product?', message: `“${p.name}” will be hidden. You can restore it from the Deleted list.`, confirmText: 'Delete', danger: true }))
       run(() => api('/products/' + p.id, 'DELETE'), 'Product deleted')
@@ -43,7 +45,7 @@ const list = D.products.filter(p =>
   
   return (
     <>
-      <h1>Products</h1><p className="sub">Add, edit and track what you sell.</p>
+      <h1>Products</h1><p className="sub">Add and edit what you sell. Stock is added on the Inventory page.</p>
       <div className="bar">
         <input placeholder="Search products" value={q} onChange={e => setQ(e.target.value)} style={{ flex: 1, minWidth: 160 }} />
 <select value={active} onChange={e => setCat(e.target.value)} aria-label="Filter by category">
@@ -91,7 +93,7 @@ const list = D.products.filter(p =>
             </div></td>
             <td data-label="Category">{p.cat || '—'}</td>
             <td data-label="Code">{p.code || '—'}</td>
-<td data-label="Size">{p.size_value ? `${p.size_value} ${p.size_unit}` : '—'}</td>
+            <td data-label="Size">{p.size_value ? `${p.size_value} ${p.size_unit === 'l' ? 'L' : p.size_unit}` : '—'}</td>
             {costs && <td data-label="Capital">{peso(p.cost_price ?? 0)}</td>}
             <td data-label="Selling price">{peso(p.price)}</td>
             {costs && <td data-label="Profit / item">{peso(p.price - (p.cost_price ?? 0))}</td>}

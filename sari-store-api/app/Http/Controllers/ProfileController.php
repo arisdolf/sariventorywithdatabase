@@ -35,6 +35,7 @@ class ProfileController extends Controller
                 DB::table('categories')->where('store_id', $sid)->delete();
                 DB::table('stores')->where('store_id', $sid)->delete();
                 DB::table('activity_log')->where('store_id', $sid)->delete();
+                DB::table('stock_batches')->where('store_id', $sid)->delete();
             }
             DB::table('profiles')->where('user_id', $id)->delete();
             DB::table('personal_access_tokens')->where('tokenable_type', User::class)->where('tokenable_id', $id)->delete();

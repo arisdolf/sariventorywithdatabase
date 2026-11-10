@@ -54,7 +54,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/categories/{id}', [S::class, 'updateCategory']);
     Route::delete('/categories/{id}', [S::class, 'destroyCategory']);
 
-    Route::post('/stock', [S::class, 'addStock']);
+    Route::post('/inventory/batches', [S::class, 'receiveStock']);
+    Route::put('/inventory/batches/{id}', [S::class, 'updateBatch']);
     Route::post('/stock/remove', [S::class, 'removeStock']);
 
     Route::post('/sales', [S::class, 'sale']);

@@ -18,6 +18,7 @@ import Settings from './pages/Settings'
 import Activity from './pages/Activity'
 import { show } from './utils/notify'
 import Landing from './pages/Landing'
+import Inventory from './pages/Inventory'
 const EMPTY = { products: [], suppliers: [], orders: [], moves: [] }
 
 const home = u => {
@@ -98,6 +99,7 @@ export default function App() {
   const me = D.me || user
   const perms = me.perms || []
   const allowed = {
+    inv: perms.includes('stock'),
     analytics: perms.includes('analytics'),
     profile: true,
     sales: perms.includes('history'),
@@ -113,7 +115,7 @@ export default function App() {
   const page = allowed[view] ? view : 'dash'
 
     const shared = { D, run, toast, setModal, user: me, onLogout: logout, setView }
-  const busy = loading && ['dash', 'prod', 'sale', 'stock', 'sup'].includes(page)
+  const busy = loading && ['dash', 'prod', 'inv', 'sale', 'stock', 'sup'].includes(page)
   return (
 
     <>
@@ -122,6 +124,7 @@ export default function App() {
         <div key={page} className="page">
           {page === 'analytics' && <Analytics {...shared} />}
           {busy && <PageSkeleton page={page} />}
+          {!busy && page === 'inv' && <Inventory {...shared} />}
           {page === 'profile' && <Profile {...shared} />}
           {page === 'sales' && <Sales {...shared} />}
           {page === 'team' && <Team {...shared} />}

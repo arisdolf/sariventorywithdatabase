@@ -68,6 +68,36 @@ class StoreController extends Controller
         };
     }
 
+    // Takes pieces out of the batches that expire first (no expiry goes last)
+private function deduct(int $sid, int $pid, int $qty): void
+{
+    $left = $qty;
+    $rows = DB::table('stock_batches')->where('store_id', $sid)->where('product_id', $pid)
+        ->where('qty_remaining', '>', 0)
+        ->orderByRaw('expiry_date IS NULL')->orderBy('expiry_date')->orderBy('batch_id')
+        ->lockForUpdate()->get();
+    foreach ($rows as $b) {
+        if ($left <= 0) break;
+        $take = min($left, $b->qty_remaining);
+        DB::table('stock_batches')->where('batch_id', $b->batch_id)->decrement('qty_remaining', $take);
+        $left -= $take;
+    }
+}
+
+// Used when a sale is voided: puts pieces back into the newest batch
+private function restore(int $sid, int $pid, int $qty): void
+{
+    $b = DB::table('stock_batches')->where('store_id', $sid)->where('product_id', $pid)->orderByDesc('batch_id')->first();
+    if ($b) {
+        DB::table('stock_batches')->where('batch_id', $b->batch_id)->increment('qty_remaining', $qty);
+    } else {
+        DB::table('stock_batches')->insert([
+            'store_id' => $sid, 'product_id' => $pid, 'pack_type' => 'piece',
+            'qty_received' => $qty, 'qty_remaining' => $qty, 'created_at' => now(),
+        ]);
+    }
+}
+
     public function data(Request $r)
     {
         $u = $r->user();
@@ -79,6 +109,7 @@ class StoreController extends Controller
     FROM products p LEFT JOIN categories c ON c.category_id = p.category_id
     WHERE p.is_active = 1 AND p.store_id = ? ORDER BY p.name", [$sid]);
 
+        
         $today = DB::selectOne("SELECT
                 CAST(COALESCE(SUM(oi.subtotal), 0) AS DOUBLE) sales,
                 CAST(COALESCE(SUM(oi.unit_cost * oi.quantity), 0) AS DOUBLE) cost,
@@ -110,87 +141,81 @@ class StoreController extends Controller
             'archived' => DB::select("SELECT product_id id, name FROM products
                 WHERE is_active = 0 AND store_id = ? ORDER BY name", [$sid]),
             'today' => $today,
+            'batches' => DB::select("SELECT batch_id id, product_id pid, batch_code code, pack_type pack,
+        pieces_per_box per_box, boxes, qty_received received, qty_remaining qty,
+        DATE_FORMAT(expiry_date,'%Y-%m-%d') expiry, DATE_FORMAT(created_at,'%b %e, %Y') at
+    FROM stock_batches WHERE store_id = ? AND qty_remaining > 0
+    ORDER BY expiry_date IS NULL, expiry_date, batch_id", [$sid]),
         ];
     }
 
     /* ---------------- Products ---------------- */
 
     public function storeProduct(Request $r)
-    {
-        $sid = $this->need($r, 'products');
-        $v = $r->validate([
-            'low_stock' => 'nullable|integer|min:0',
-            'name' => 'required|string|max:120', 'description' => 'nullable|string|max:500',
-            'cat' => 'nullable|string|max:80',
-            'cost_price' => 'nullable|numeric|min:0',
-            'price' => 'required|numeric|min:0',
-            'qty' => 'required|integer|min:0',
-            'code' => 'nullable|string|max:50',
-'size_value' => 'nullable|numeric|min:0',
-'size_unit' => 'required_with:size_value|nullable|in:g,ml',
-        ]);
-        $cost = $r->user()->hasPerm('costs') ? ($v['cost_price'] ?? 0) : 0;
-        abort_if($v['price'] < $cost, 422, 'Selling price cannot be below the capital');
-        [$code, $size, $unit] = $this->extras($v, $sid);
-        DB::transaction(function () use ($v, $sid, $cost, $code, $size, $unit) {
-    $id = DB::table('products')->insertGetId([
+{
+    $sid = $this->need($r, 'products');
+    $v = $r->validate([
+        'low_stock' => 'nullable|integer|min:0',
+        'name' => 'required|string|max:120', 'description' => 'nullable|string|max:500',
+        'cat' => 'nullable|string|max:80',
+        'cost_price' => 'nullable|numeric|min:0',
+        'price' => 'required|numeric|min:0',
+        'code' => 'nullable|string|max:50',
+        'size_value' => 'nullable|numeric|min:0',
+        'size_unit' => 'required_with:size_value|nullable|in:g,kg,ml,l',
+    ]);
+    $cost = $r->user()->hasPerm('costs') ? ($v['cost_price'] ?? 0) : 0;
+    abort_if($v['price'] < $cost, 422, 'Selling price cannot be below the capital');
+    [$code, $size, $unit] = $this->extras($v, $sid);
+    DB::table('products')->insert([
         'low_stock' => $v['low_stock'] ?? 10,
         'store_id' => $sid, 'name' => $v['name'], 'description' => $v['description'] ?? null,
         'code' => $code, 'size_value' => $size, 'size_unit' => $unit,
         'category_id' => $this->catId($v['cat'] ?? '', $sid),
-        'cost_price' => $cost, 'unit_price' => $v['price'], 'stock_quantity' => $v['qty'],
+        'cost_price' => $cost, 'unit_price' => $v['price'], 'stock_quantity' => 0,
     ]);
-            if ($v['qty'] > 0) $this->log($sid, $id, 'IN', $v['qty'], 'Opening stock');
-        });
-        Activity::log($sid, 'product', "Added product {$v['name']} ({$this->m($v['price'])}, {$v['qty']} in stock)");
-        return ['ok' => true];
-    }
+    Activity::log($sid, 'product', "Added product {$v['name']} ({$this->m($v['price'])})");
+    return ['ok' => true];
+}
 
-    public function updateProduct(Request $r, $id)
-    {
-        $sid = $this->need($r, 'products');
-        $v = $r->validate([
-            'low_stock' => 'nullable|integer|min:0',
-            'name' => 'required|string|max:120', 'description' => 'nullable|string|max:500',
-            'cat' => 'nullable|string|max:80',
-            'cost_price' => 'nullable|numeric|min:0',
-            'price' => 'required|numeric|min:0',
-            'qty' => 'required|integer|min:0',
-            'code' => 'nullable|string|max:50',
-'size_value' => 'nullable|numeric|min:0',
-'size_unit' => 'required_with:size_value|nullable|in:g,ml',
-        ]);
-        $mine = DB::table('products')->where('product_id', $id)->where('store_id', $sid);
-        $old = (clone $mine)->first();
-        abort_unless($old, 404, 'Product not found');
-        [$code, $size, $unit] = $this->extras($v, $sid, $id);
-        $canCost = $r->user()->hasPerm('costs');
-        $cost = $canCost ? ($v['cost_price'] ?? 0) : $old->cost_price;
-        abort_if($v['price'] < $cost, 422, 'Selling price cannot be below the capital');
+public function updateProduct(Request $r, $id)
+{
+    $sid = $this->need($r, 'products');
+    $v = $r->validate([
+        'low_stock' => 'nullable|integer|min:0',
+        'name' => 'required|string|max:120', 'description' => 'nullable|string|max:500',
+        'cat' => 'nullable|string|max:80',
+        'cost_price' => 'nullable|numeric|min:0',
+        'price' => 'required|numeric|min:0',
+        'code' => 'nullable|string|max:50',
+        'size_value' => 'nullable|numeric|min:0',
+        'size_unit' => 'required_with:size_value|nullable|in:g,kg,ml,l',
+    ]);
+    $mine = DB::table('products')->where('product_id', $id)->where('store_id', $sid);
+    $old = (clone $mine)->first();
+    abort_unless($old, 404, 'Product not found');
+    [$code, $size, $unit] = $this->extras($v, $sid, $id);
+    $canCost = $r->user()->hasPerm('costs');
+    $cost = $canCost ? ($v['cost_price'] ?? 0) : $old->cost_price;
+    abort_if($v['price'] < $cost, 422, 'Selling price cannot be below the capital');
 
-        DB::transaction(function () use ($v, $mine, $old, $canCost, $cost, $sid, $id, $code, $size, $unit) {
     $row = [
         'low_stock' => $v['low_stock'] ?? 10,
         'name' => $v['name'], 'description' => $v['description'] ?? null,
         'code' => $code, 'size_value' => $size, 'size_unit' => $unit,
         'category_id' => $this->catId($v['cat'] ?? '', $sid),
-        'unit_price' => $v['price'], 'stock_quantity' => $v['qty'],
+        'unit_price' => $v['price'],
     ];
-            if ($canCost) $row['cost_price'] = $cost;
-            $mine->update($row);
-            if ($v['qty'] != $old->stock_quantity) {
-                $this->log($sid, $id, 'ADJUSTMENT', $v['qty'] - $old->stock_quantity, 'Edited stock');
-            }
-        });
+    if ($canCost) $row['cost_price'] = $cost;
+    $mine->update($row);
 
-        $ch = [];
-        if ($old->name !== $v['name']) $ch[] = "name “{$old->name}” → “{$v['name']}”";
-        if ((float) $old->unit_price !== (float) $v['price']) $ch[] = 'price ' . $this->m($old->unit_price) . ' → ' . $this->m($v['price']);
-        if ($canCost && (float) $old->cost_price !== (float) $cost) $ch[] = 'capital ' . $this->m($old->cost_price) . ' → ' . $this->m($cost);
-        if ((int) $old->stock_quantity !== (int) $v['qty']) $ch[] = "stock {$old->stock_quantity} → {$v['qty']}";
-        Activity::log($sid, 'product', "Edited {$old->name}" . ($ch ? ': ' . implode(', ', $ch) : ''));
-        return ['ok' => true];
-    }
+    $ch = [];
+    if ($old->name !== $v['name']) $ch[] = "name “{$old->name}” → “{$v['name']}”";
+    if ((float) $old->unit_price !== (float) $v['price']) $ch[] = 'price ' . $this->m($old->unit_price) . ' → ' . $this->m($v['price']);
+    if ($canCost && (float) $old->cost_price !== (float) $cost) $ch[] = 'capital ' . $this->m($old->cost_price) . ' → ' . $this->m($cost);
+    Activity::log($sid, 'product', "Edited {$old->name}" . ($ch ? ': ' . implode(', ', $ch) : ''));
+    return ['ok' => true];
+}
 
     // Soft delete: keeps old orders valid
     public function destroyProduct(Request $r, $id)
@@ -216,49 +241,101 @@ class StoreController extends Controller
 
     /* ---------------- Stock ---------------- */
 
-    public function addStock(Request $r)
-    {
-        $sid = $this->need($r, 'stock');
-        $v = $r->validate(['product_id' => 'required|integer', 'qty' => 'required|integer|min:1', 'remarks' => 'nullable|string']);
-        $mine = DB::table('products')->where('product_id', $v['product_id'])->where('store_id', $sid);
-        abort_unless((clone $mine)->exists(), 404, 'Product not found');
-        $name = (clone $mine)->value('name');
+    public function receiveStock(Request $r)
+{
+    $sid = $this->need($r, 'stock');
+    $v = $r->validate([
+        'product_id' => 'required|integer',
+        'pack' => 'required|in:piece,box',
+        'qty' => 'required|integer|min:1',                       // pieces, or number of boxes
+        'per_box' => 'required_if:pack,box|nullable|integer|min:1',
+        'batch_code' => 'nullable|string|max:60',
+        'expiry' => 'nullable|date_format:Y-m-d|after:2000-01-01',
+        'remarks' => 'nullable|string|max:200',
+    ]);
+    $p = DB::table('products')->where('product_id', $v['product_id'])->where('store_id', $sid)->where('is_active', 1)->first();
+    abort_unless($p, 404, 'Product not found');
 
-        DB::transaction(function () use ($v, $mine, $sid) {
-            $mine->increment('stock_quantity', $v['qty']);
-            $this->log($sid, $v['product_id'], 'IN', $v['qty'], ($v['remarks'] ?? '') ?: 'Restock');
-        });
-        Activity::log($sid, 'stock', "Added {$v['qty']} × $name to stock");
-        return ['ok' => true];
+    $box = $v['pack'] === 'box';
+    $per = $box ? (int) $v['per_box'] : null;
+    $boxes = $box ? (int) $v['qty'] : null;
+    $pieces = $box ? $boxes * $per : (int) $v['qty'];
+    $code = trim((string) ($v['batch_code'] ?? '')) ?: null;
+    if ($code) {
+        abort_if(DB::table('stock_batches')->where('product_id', $p->product_id)->where('batch_code', $code)->exists(),
+            422, 'This product already has a batch with that number');
     }
+
+    DB::transaction(function () use ($v, $sid, $p, $box, $per, $boxes, $pieces, $code, $r) {
+        DB::table('stock_batches')->insert([
+            'store_id' => $sid, 'product_id' => $p->product_id, 'user_id' => $r->user()->getKey(),
+            'batch_code' => $code, 'pack_type' => $v['pack'], 'pieces_per_box' => $per, 'boxes' => $boxes,
+            'qty_received' => $pieces, 'qty_remaining' => $pieces,
+            'expiry_date' => $v['expiry'] ?? null, 'created_at' => now(),
+        ]);
+        DB::table('products')->where('product_id', $p->product_id)->increment('stock_quantity', $pieces);
+        $note = ($v['remarks'] ?? '') ?: ('Batch' . ($code ? " $code" : '') . ($box ? " · $boxes box × $per" : ''));
+        $this->log($sid, $p->product_id, 'IN', $pieces, $note);
+    });
+    Activity::log($sid, 'stock', "Received $pieces × {$p->name}" . (!empty($v['expiry']) ? " (expires {$v['expiry']})" : ''));
+    return ['ok' => true];
+}
+
+public function updateBatch(Request $r, $id)
+{
+    $sid = $this->need($r, 'stock');
+    $v = $r->validate(['batch_code' => 'nullable|string|max:60', 'expiry' => 'nullable|date_format:Y-m-d|after:2000-01-01']);
+    $b = DB::table('stock_batches')->where('batch_id', $id)->where('store_id', $sid)->first();
+    abort_unless($b, 404, 'Batch not found');
+    $code = trim((string) ($v['batch_code'] ?? '')) ?: null;
+    if ($code) {
+        abort_if(DB::table('stock_batches')->where('product_id', $b->product_id)->where('batch_code', $code)
+            ->where('batch_id', '!=', $id)->exists(), 422, 'This product already has a batch with that number');
+    }
+    DB::table('stock_batches')->where('batch_id', $id)->update(['batch_code' => $code, 'expiry_date' => $v['expiry'] ?? null]);
+    $name = DB::table('products')->where('product_id', $b->product_id)->value('name');
+    Activity::log($sid, 'stock', "Edited a batch of $name");
+    return ['ok' => true];
+}
 
     public function removeStock(Request $r)
-    {
-        $sid = $this->need($r, 'stock');
-        $v = $r->validate([
-            'product_id' => 'required|integer',
-            'qty' => 'required|integer|min:1',
-            'reason' => 'required|in:damaged,expired,lost,other',
-            'remarks' => 'nullable|string|max:200',
-        ]);
+{
+    $sid = $this->need($r, 'stock');
+    $v = $r->validate([
+        'product_id' => 'required|integer',
+        'batch_id' => 'nullable|integer',
+        'qty' => 'required|integer|min:1',
+        'reason' => 'required|in:damaged,expired,lost,other',
+        'remarks' => 'nullable|string|max:200',
+    ]);
 
-        DB::transaction(function () use ($v, $sid) {
-            $p = DB::table('products')->where('product_id', $v['product_id'])->where('store_id', $sid)->lockForUpdate()->first();
-            abort_unless($p, 404, 'Product not found');
-            abort_if($p->stock_quantity < $v['qty'], 422, 'Only ' . $p->stock_quantity . ' in stock');
+    DB::transaction(function () use ($v, $sid) {
+        $p = DB::table('products')->where('product_id', $v['product_id'])->where('store_id', $sid)->lockForUpdate()->first();
+        abort_unless($p, 404, 'Product not found');
+        abort_if($p->stock_quantity < $v['qty'], 422, 'Only ' . $p->stock_quantity . ' in stock');
 
-            DB::table('products')->where('product_id', $p->product_id)->decrement('stock_quantity', $v['qty']);
-            $note = ucfirst($v['reason']) . (!empty($v['remarks']) ? ': ' . $v['remarks'] : '');
-            $this->log($sid, $p->product_id, 'OUT', $v['qty'], $note, null, 'removal');
+        if (!empty($v['batch_id'])) {
+            $b = DB::table('stock_batches')->where('batch_id', $v['batch_id'])->where('store_id', $sid)
+                ->where('product_id', $p->product_id)->lockForUpdate()->first();
+            abort_unless($b, 404, 'Batch not found');
+            abort_if($b->qty_remaining < $v['qty'], 422, 'Only ' . $b->qty_remaining . ' left in that batch');
+            DB::table('stock_batches')->where('batch_id', $b->batch_id)->decrement('qty_remaining', $v['qty']);
+        } else {
+            $this->deduct($sid, $p->product_id, $v['qty']);
+        }
 
-            Activity::log($sid, 'stock', "Removed {$v['qty']} × {$p->name} ({$v['reason']})");
-            $left = $p->stock_quantity - $v['qty'];
-            if ($p->stock_quantity > $p->low_stock && $left <= $p->low_stock) {
-                Activity::log($sid, 'lowstock', "{$p->name} is running low ($left left)");
-            }
-        });
-        return ['ok' => true];
-    }
+        DB::table('products')->where('product_id', $p->product_id)->decrement('stock_quantity', $v['qty']);
+        $note = ucfirst($v['reason']) . (!empty($v['remarks']) ? ': ' . $v['remarks'] : '');
+        $this->log($sid, $p->product_id, 'OUT', $v['qty'], $note, null, 'removal');
+
+        Activity::log($sid, 'stock', "Removed {$v['qty']} × {$p->name} ({$v['reason']})");
+        $left = $p->stock_quantity - $v['qty'];
+        if ($p->stock_quantity > $p->low_stock && $left <= $p->low_stock) {
+            Activity::log($sid, 'lowstock', "{$p->name} is running low ($left left)");
+        }
+    });
+    return ['ok' => true];
+}
 
     /* ---------------- Sales ---------------- */
 
@@ -291,6 +368,7 @@ class StoreController extends Controller
             foreach ($v['items'] as $i) {
                 $p = DB::table('products')->where('product_id', $i['id'])->where('store_id', $sid)->lockForUpdate()->first();
                 if (!$p || $p->stock_quantity < $i['qty']) {
+                   
                     abort(422, 'Not enough stock for ' . ($p->name ?? 'a product'));
                 }
                 $sub = $p->unit_price * $i['qty'];
@@ -302,6 +380,7 @@ class StoreController extends Controller
                     'unit_price' => $p->unit_price, 'unit_cost' => $p->cost_price, 'subtotal' => $sub,
                 ]);
                 DB::table('products')->where('product_id', $p->product_id)->decrement('stock_quantity', $i['qty']);
+                 $this->deduct($sid, $p->product_id, $i['qty']);
                 $this->log($sid, $p->product_id, 'OUT', $i['qty'], 'Sale #' . $no . ' · ' . $now->format('M j'), $orderId, 'order');
 
                 $left = $p->stock_quantity - $i['qty'];
@@ -366,6 +445,7 @@ class StoreController extends Controller
             foreach (DB::table('order_items')->where('order_id', $id)->get() as $i) {
                 DB::table('products')->where('product_id', $i->product_id)->where('store_id', $sid)
                     ->increment('stock_quantity', $i->quantity);
+                     $this->restore($sid, $i->product_id, $i->quantity);
                 $this->log($sid, $i->product_id, 'IN', $i->quantity, 'Voided sale #' . $no, $id, 'order');
             }
             DB::table('orders')->where('order_id', $id)->update(['status' => 'cancelled']);

@@ -67,7 +67,7 @@ const PAGES = {
       <div className="card"><Sk w={110} h={18} style={{ marginBottom: 12 }} /><Lines n={4} /></div>
     </div>
   </>,
-
+inv: () => <><Head /><Bar buttons={2} /><Table cols={5} rows={6} /></>,
   prod: () => <><Head /><Bar buttons={3} /><Table cols={7} rows={6} /></>,
 
   sale: () => <>

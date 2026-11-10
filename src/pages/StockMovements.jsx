@@ -2,19 +2,8 @@ import Empty from '../components/Empty'
 import { api } from '../services/api'
 
 export default function StockMovements({ D, run, setModal }) {
-
   const pname = id => D.products.find(p => p.id === id)?.name || 'Deleted product'
   const opts = D.products.map(p => [p.id, p.name + (p.code ? ' · ' + p.code : '') + ' (' + p.qty + ' left)'])
-
-  const addStock = () => setModal({
-    title: 'Add stock',
-    fields: [
-      { n: 'pid', l: 'Product', opts, search: 1, ph: 'Search product…' },
-      { n: 'qty', l: 'Quantity received', t: 'number', v: 1, req: 1 },
-      { n: 'rem', l: 'Remarks (optional)' },
-    ],
-    save: v => run(() => api('/stock', 'POST', { product_id: +v.pid, qty: +v.qty, remarks: v.rem }), 'Stock added'),
-  })
 
   const removeStock = () => setModal({
     title: 'Remove stock',
@@ -29,9 +18,8 @@ export default function StockMovements({ D, run, setModal }) {
 
   return (
     <>
-      <h1>Stock movements</h1><p className="sub">Every stock change is logged here.</p>
+      <h1>Stock movements</h1><p className="sub">Every stock change is logged here. Add new stock on the Inventory page.</p>
       <div className="bar">
-        <button className="btn" onClick={addStock}>Add stock</button>
         <button className="btn ghost" onClick={removeStock}>Remove stock</button>
       </div>
       <div className="tw">{D.moves.length ? <table>
