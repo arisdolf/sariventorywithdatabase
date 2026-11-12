@@ -54,8 +54,7 @@ export default function Profile({ D, run, toast, user }) {
         <input required value={f.last_name} onChange={set('last_name')} style={{ width: '100%' }} />
         <label>Email (cannot be changed)</label>
         <input disabled value={f.email} style={{ width: '100%' }} />
-        <label>Birthdate</label>
-        <input type="date" required max={new Date().toISOString().slice(0, 10)} value={f.birthdate} onChange={set('birthdate')} style={{ width: '100%' }} />
+      
         <button className="btn" style={{ marginTop: 16 }} disabled={!dirty}>Save changes</button>
       </form>
 

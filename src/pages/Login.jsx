@@ -32,7 +32,7 @@ export default function Login({ onLogin, start = 'login', onHome }) {
   const [kind, setKind] = useState('create')     // create | join (signup only)
   const [needStore, setNeedStore] = useState(false) // shown only when login says "no store"
   const [f, setF] = useState({
-    first_name: '', middle_name: '', last_name: '', birthdate: '',
+    first_name: '', middle_name: '', last_name: '',
     email: '', password: '', confirm: '', store_name: '', code: '' ,store_type: 'sari_sari', terms: false,
   })
     const [forgot, setForgot] = useState(false)
@@ -58,7 +58,7 @@ export default function Login({ onLogin, start = 'login', onHome }) {
       } else {
         finish(await api('/register', 'POST', {
           mode: kind, first_name: f.first_name, middle_name: f.middle_name, last_name: f.last_name,
-          birthdate: f.birthdate, email: f.email, password: f.password,
+          email: f.email, password: f.password,
           store_name: f.store_name, code: f.code,
           store_type: f.store_type, accept_terms: f.terms,
         }))
@@ -144,7 +144,7 @@ if (waiting) return (
           <div><Field label="Last name" required value={f.last_name} onChange={set('last_name')} /></div>
         </div>
         <Field label="Middle name (optional)" value={f.middle_name} onChange={set('middle_name')} />
-        <Field label="Birthdate" type="date" required max={TODAY} value={f.birthdate} onChange={set('birthdate')} />
+      
         <Field label="Email" type="email" required value={f.email} onChange={set('email')} />
         <Field label="Password (at least 8 characters)" type="password" required minLength={8} value={f.password} onChange={set('password')} />
         <Field label="Confirm password" type="password" required value={f.confirm} onChange={set('confirm')} />

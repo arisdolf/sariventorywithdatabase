@@ -45,7 +45,7 @@ class ProfileController extends Controller
             DB::table('users')->where('user_id', $id)->update([
                 'name' => 'Deleted user', 'first_name' => 'Deleted', 'middle_name' => null, 'last_name' => 'user',
                 'email' => "deleted-$id@deleted.invalid", 'password_hash' => Hash::make(Str::random(40)),
-                'birthdate' => '1900-01-01', 'store_id' => null, 'role' => 'viewer',
+                'birthdate' => 'null', 'store_id' => null, 'role' => 'viewer',
             ]);
         });
         return ['ok' => true];
@@ -55,12 +55,12 @@ class ProfileController extends Controller
     {
         $id = $r->user()->getKey();
         $u = DB::table('users')->where('user_id', $id)
-            ->first(['first_name', 'middle_name', 'last_name', 'email', 'birthdate']);
+            ->first(['first_name', 'middle_name', 'last_name', 'email']);
         $p = DB::table('profiles')->where('user_id', $id)->first(['phone', 'address', 'city', 'zip_code']);
 
         return [
             'first_name' => $u->first_name, 'middle_name' => $u->middle_name, 'last_name' => $u->last_name,
-            'email' => $u->email, 'birthdate' => $u->birthdate,
+            'email' => $u->email,
             'phone' => $p->phone ?? null, 'address' => $p->address ?? null,
             'city' => $p->city ?? null, 'zip_code' => $p->zip_code ?? null,
         ];
@@ -73,7 +73,7 @@ class ProfileController extends Controller
             'first_name'  => 'required|string|max:60',
             'middle_name' => 'nullable|string|max:60',
             'last_name'   => 'required|string|max:60',
-            'birthdate'   => 'required|date|before:today|after:1900-01-01',
+           
             'phone'       => 'nullable|string|max:30',
             'address'     => 'nullable|string|max:255',
             'city'        => 'nullable|string|max:80',
@@ -88,7 +88,7 @@ class ProfileController extends Controller
             DB::table('users')->where('user_id', $id)->update([
                 'first_name' => $first, 'middle_name' => $mid, 'last_name' => $last,
                 'name' => trim(implode(' ', array_filter([$first, $mid, $last]))),
-                'birthdate' => $v['birthdate'],
+                
             ]);
             DB::table('profiles')->updateOrInsert(['user_id' => $id], [
                 'phone' => $v['phone'] ?? null, 'address' => $v['address'] ?? null,

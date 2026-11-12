@@ -130,7 +130,7 @@ private function enter(User $user)
         return ['ok' => true]; // same answer whether or not the email exists
     }
 
-    const JOIN_ROLE = 'cashier'; // role everyone gets when joining with a code
+    const JOIN_ROLE = 'viewer';  // role everyone gets when joining with a code
     const STORE_TYPES = ['sari_sari', 'small_business', 'street_vendor', 'mini_grocery', 'food_stall', 'online_seller', 'other'];
     public static function makeCode(): string
     {
@@ -212,7 +212,7 @@ return $this->enter($user);
             'email' => 'required|email|max:150|unique:users,email',
             'password' => 'required|string|min:8|max:100',
             'store_name' => 'required_if:mode,create|nullable|string|max:120',
-            'birthdate' => 'required|date|before:today|after:1900-01-01',
+            
             'code' => 'required_if:mode,join|nullable|string|max:20',
              'store_type' => ['required_if:mode,create', 'nullable', Rule::in(self::STORE_TYPES)],
             'accept_terms' => 'accepted',
@@ -249,7 +249,7 @@ return $this->enter($user);
     'last_name'     => trim($v['last_name']),
     'name'          => trim(implode(' ', array_filter([$v['first_name'], $v['middle_name'] ?? '', $v['last_name']]))),
     'email'         => $v['email'],
-    'birthdate'     => $v['birthdate'],
+    
     'password_hash' => $v['password'], // hashed by the model
     'role'          => $role,
     'store_id' => $sid, 'pending_store_id' => $pendingSid,
