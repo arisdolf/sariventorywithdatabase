@@ -104,10 +104,11 @@ private function restore(int $sid, int $pid, int $qty): void
         $sid = $this->sid($r);
 
         $products = DB::select("SELECT p.product_id id, p.name, p.description, p.low_stock, p.code,
-        CAST(p.size_value AS DOUBLE) size_value, p.size_unit, COALESCE(c.name,'') cat,
-        CAST(p.cost_price AS DOUBLE) cost_price, CAST(p.unit_price AS DOUBLE) price, p.stock_quantity qty
-    FROM products p LEFT JOIN categories c ON c.category_id = p.category_id
-    WHERE p.is_active = 1 AND p.store_id = ? ORDER BY p.name", [$sid]);
+    p.sold_by, p.pack_qty, p.box_contains, p.is_homemade,
+    CAST(p.size_value AS DOUBLE) size_value, p.size_unit, COALESCE(c.name,'') cat,
+    CAST(p.cost_price AS DOUBLE) cost_price, CAST(p.unit_price AS DOUBLE) price, p.stock_quantity qty
+FROM products p LEFT JOIN categories c ON c.category_id = p.category_id
+WHERE p.is_active = 1 AND p.store_id = ? ORDER BY p.name", [$sid]);
 
         
         $today = DB::selectOne("SELECT
@@ -140,14 +141,20 @@ private function restore(int $sid, int $pid, int $qty): void
                 WHERE m.store_id = ? ORDER BY m.movement_id DESC LIMIT 200", [$sid]),
             'archived' => DB::select("SELECT product_id id, name FROM products
                 WHERE is_active = 0 AND store_id = ? ORDER BY name", [$sid]),
-            'today' => $today,
+                        'today' => $today,
             'batches' => DB::select("SELECT batch_id id, product_id pid, batch_code code, pack_type pack,
-        pieces_per_box per_box, boxes, qty_received received, qty_remaining qty,
-        DATE_FORMAT(expiry_date,'%Y-%m-%d') expiry, DATE_FORMAT(created_at,'%b %e, %Y') at
-    FROM stock_batches WHERE store_id = ? AND qty_remaining > 0
-    ORDER BY expiry_date IS NULL, expiry_date, batch_id", [$sid]),
+                    pieces_per_box per_box, boxes, qty_received received, qty_remaining qty,
+                    DATE_FORMAT(expiry_date,'%Y-%m-%d') expiry, DATE_FORMAT(created_at,'%b %e, %Y') at
+                FROM stock_batches WHERE store_id = ? AND qty_remaining > 0
+                ORDER BY expiry_date IS NULL, expiry_date, batch_id", [$sid]),
+            'month' => $u->hasPerm('costs')
+                ? ExpenseController::summary($sid, now()->startOfMonth(), now()->endOfMonth())
+                : null,
         ];
     }
+    
+        
+    
 
     /* ---------------- Products ---------------- */
 
@@ -162,12 +169,20 @@ private function restore(int $sid, int $pid, int $qty): void
         'price' => 'required|numeric|min:0',
         'code' => 'nullable|string|max:50',
         'size_value' => 'nullable|numeric|min:0',
-        'size_unit' => 'required_with:size_value|nullable|in:g,kg,ml,l',
+        'size_unit' => 'required_with:size_value|nullable|in:mg,g,kg,ml,l',
+'sold_by' => 'required|in:piece,pack,box',
+'pack_qty' => 'required_unless:sold_by,piece|nullable|integer|min:1',
+'box_contains' => 'required_if:sold_by,box|nullable|in:piece,pack',
+'is_homemade' => 'nullable|boolean',
     ]);
     $cost = $r->user()->hasPerm('costs') ? ($v['cost_price'] ?? 0) : 0;
     abort_if($v['price'] < $cost, 422, 'Selling price cannot be below the capital');
     [$code, $size, $unit] = $this->extras($v, $sid);
+    $pack = $v['sold_by'] === 'piece' ? null : (int) $v['pack_qty'];
+$in = $v['sold_by'] === 'box' ? $v['box_contains'] : null;
     DB::table('products')->insert([
+        'sold_by' => $v['sold_by'], 'pack_qty' => $pack, 'box_contains' => $in,
+'is_homemade' => !empty($v['is_homemade']) ? 1 : 0,
         'low_stock' => $v['low_stock'] ?? 10,
         'store_id' => $sid, 'name' => $v['name'], 'description' => $v['description'] ?? null,
         'code' => $code, 'size_value' => $size, 'size_unit' => $unit,
@@ -189,12 +204,19 @@ public function updateProduct(Request $r, $id)
         'price' => 'required|numeric|min:0',
         'code' => 'nullable|string|max:50',
         'size_value' => 'nullable|numeric|min:0',
-        'size_unit' => 'required_with:size_value|nullable|in:g,kg,ml,l',
+        'size_unit' => 'required_with:size_value|nullable|in:mg,g,kg,ml,l',
+'sold_by' => 'required|in:piece,pack,box',
+'pack_qty' => 'required_unless:sold_by,piece|nullable|integer|min:1',
+'box_contains' => 'required_if:sold_by,box|nullable|in:piece,pack',
+'is_homemade' => 'nullable|boolean',
     ]);
     $mine = DB::table('products')->where('product_id', $id)->where('store_id', $sid);
     $old = (clone $mine)->first();
     abort_unless($old, 404, 'Product not found');
     [$code, $size, $unit] = $this->extras($v, $sid, $id);
+    $pack = $v['sold_by'] === 'piece' ? null : (int) $v['pack_qty'];
+$in = $v['sold_by'] === 'box' ? $v['box_contains'] : null;
+    
     $canCost = $r->user()->hasPerm('costs');
     $cost = $canCost ? ($v['cost_price'] ?? 0) : $old->cost_price;
     abort_if($v['price'] < $cost, 422, 'Selling price cannot be below the capital');
@@ -205,7 +227,10 @@ public function updateProduct(Request $r, $id)
         'code' => $code, 'size_value' => $size, 'size_unit' => $unit,
         'category_id' => $this->catId($v['cat'] ?? '', $sid),
         'unit_price' => $v['price'],
+        'sold_by' => $v['sold_by'], 
+        'pack_qty' => $pack, 'box_contains' => $in,
     ];
+    
     if ($canCost) $row['cost_price'] = $cost;
     $mine->update($row);
 

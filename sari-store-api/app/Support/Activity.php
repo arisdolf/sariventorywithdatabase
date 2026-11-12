@@ -10,7 +10,7 @@ class Activity
     const GROUPS = [
         'sales'   => ['sale', 'void'],
         'stock'   => ['stock', 'lowstock'],
-        'catalog' => ['product', 'supplier', 'category'],
+        'catalog' => ['product', 'supplier', 'category', 'expense'],
         'team'    => ['team', 'settings'],
     ];
 

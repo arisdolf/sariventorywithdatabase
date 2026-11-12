@@ -19,6 +19,7 @@ import Activity from './pages/Activity'
 import { show } from './utils/notify'
 import Landing from './pages/Landing'
 import Inventory from './pages/Inventory'
+import Expenses from './pages/Expenses'
 const EMPTY = { products: [], suppliers: [], orders: [], moves: [] }
 
 const home = u => {
@@ -99,6 +100,7 @@ export default function App() {
   const me = D.me || user
   const perms = me.perms || []
   const allowed = {
+    exp: perms.includes('costs'),
     inv: perms.includes('stock'),
     analytics: perms.includes('analytics'),
     profile: true,
@@ -122,6 +124,7 @@ export default function App() {
             <Nav view={['analytics', 'activity'].includes(page) ? 'settings' : page} setView={setView} perms={perms} store={me.store} onLogout={logout} />
       <main>
         <div key={page} className="page">
+          {page === 'exp' && <Expenses {...shared} />}
           {page === 'analytics' && <Analytics {...shared} />}
           {busy && <PageSkeleton page={page} />}
           {!busy && page === 'inv' && <Inventory {...shared} />}

@@ -7,6 +7,7 @@ const ICONS = {
   sales: <><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z" /><path d="M9 8h6M9 12h6" /></>,
   stock: <><path d="M7 4v16M7 20l-3-3M7 20l3-3" /><path d="M17 20V4M17 4l-3 3M17 4l3 3" /></>,
   inv: <><path d="M3 9h18v11H3z" /><path d="M3 9l3-5h12l3 5M9 13h6" /></>,
+  exp: <><path d="M3 7h18v12H3z" /><path d="M3 7l3-3h12l3 3M16 13h2" /></>,
   sup: <><path d="M1 6h13v10H1zM14 9h4l3 3v4h-7" /><circle cx="6" cy="18" r="1.8" /><circle cx="17" cy="18" r="1.8" /></>,
   team: <><circle cx="9" cy="8" r="3.5" /><path d="M2 20c0-3.5 3-6 7-6s7 2.5 7 6" /><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14c2.5.6 4 2.6 4 5" /></>,
   profile: <><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7" /></>,
@@ -22,7 +23,7 @@ const GROUPS = [
   ['Overview', [['dash', 'Dashboard', 'Home', null]]],
   ['Selling', [['sale', 'New sale', 'Sell', 'sell'], ['sales', 'Sales history', 'Sales', 'history']]],
   ['Inventory', [['prod', 'Products', 'Items', 'products'], ['inv', 'Inventory', 'Stock', 'stock'], ['stock', 'Stock movements', 'Log', 'stock'], ['sup', 'Suppliers', 'Suppliers', 'suppliers']]],
-  ['Manage', [['team', 'Team', 'Team', 'team']]],
+  ['Manage', [['exp', 'Expenses', 'Expenses', 'costs'], ['team', 'Team', 'Team', 'team']]],
   ['Account', [['profile', 'Profile', 'Me', null], ['settings', 'Settings', 'Settings', null]]],
 ]
 const MAIN = ['dash', 'sale', 'inv', 'prod', 'sales', 'stock']

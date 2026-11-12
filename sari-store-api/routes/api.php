@@ -8,7 +8,7 @@ use App\Http\Controllers\ProfileController as P;
 use App\Http\Controllers\AnalyticsController as A;
 use App\Http\Controllers\SettingsController as Se;
 use App\Http\Controllers\ActivityController as Ac;
-
+use App\Http\Controllers\ExpenseController as E;
 // Public: no token needed
 
 Route::post('/forgot-password', [AuthController::class, 'forgot'])
@@ -76,6 +76,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/team/{id}/decline', [T::class, 'decline']);
     Route::post('/team/{id}/suspend', [T::class, 'suspend']);
     Route::post('/team/{id}/reactivate', [T::class, 'reactivate']);
+
+    Route::get('/expenses', [E::class, 'index']);
+Route::post('/expenses', [E::class, 'store']);
+Route::put('/expenses/{id}', [E::class, 'update']);
+Route::delete('/expenses/{id}', [E::class, 'destroy']);
 
     Route::get('/profile', [P::class, 'show']);
     Route::put('/profile', [P::class, 'update']);

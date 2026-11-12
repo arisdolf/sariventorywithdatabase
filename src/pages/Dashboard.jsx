@@ -37,6 +37,15 @@ export default function Dashboard({ D, user, onLogout }) {
         <div className="stat"><b>{t.items}</b><small>Items sold</small></div>
       </div>
       )}
+
+      {costs && D.month && (
+  <div className="stats">
+    <div className="stat"><b>{peso(D.month.gross)}</b><small>Profit this month</small></div>
+    <div className="stat"><b>{peso(D.month.expenses)}</b><small>Expenses this month</small></div>
+    <div className="stat"><b style={{ color: D.month.net < 0 ? 'var(--bad)' : 'var(--acc)' }}>{peso(D.month.net)}</b><small>Net profit this month</small></div>
+  </div>
+)}
+
       <div className="grid2">
         <div className="card"><h3>Running low</h3>
           {low.length ? low.map(p => <div key={p.id} style={row}><span>{p.name}</span><span>{p.qty} left</span></div>) : <Empty>Everything is well stocked.</Empty>}
