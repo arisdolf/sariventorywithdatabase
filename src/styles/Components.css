@@ -265,3 +265,26 @@ body:has(.ov) { overflow: hidden }
 .cf-icon.danger { color: var(--bad) }
 .cf-btns { display: flex; gap: 10px; margin-top: 20px }
 .cf-btns .btn { flex: 1 }
+
+/* Slim tab switcher (inside modals) */
+.mtabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 14px 0 4px }
+.mtabs button {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: var(--panel); color: var(--mute);
+  font: 600 14px Figtree, sans-serif;
+  white-space: nowrap; cursor: pointer;
+}
+.mtabs button svg { flex: none }
+.mtabs button:hover { border-color: var(--acc) }
+.mtabs button.on { border-color: var(--acc); background: var(--accbg); color: var(--acc) }
+.mtabs-hint { margin: 8px 2px 0; font-size: 13px; line-height: 1.4; color: var(--mute) }
+@media (max-width: 760px) {
+  .mtabs button { min-height: 44px; font-size: 13px; padding: 8px 6px; gap: 6px }
+}
+
+/* Amount + unit on one row */
+.amt { display: flex; gap: 8px }
+dialog .amt input { flex: 1 1 0; width: auto }
+dialog .amt select { flex: none; width: auto; min-width: 84px }

@@ -104,7 +104,7 @@ private function restore(int $sid, int $pid, int $qty): void
         $sid = $this->sid($r);
 
         $products = DB::select("SELECT p.product_id id, p.name, p.description, p.low_stock, p.code,
-    p.sold_by, p.pack_qty, p.box_contains, p.is_homemade,
+    p.sold_by, p.pack_qty, p.box_contains, p.is_homemade, p.is_repacked,
     CAST(p.size_value AS DOUBLE) size_value, p.size_unit, COALESCE(c.name,'') cat,
     CAST(p.cost_price AS DOUBLE) cost_price, CAST(p.unit_price AS DOUBLE) price, p.stock_quantity qty
 FROM products p LEFT JOIN categories c ON c.category_id = p.category_id
@@ -162,6 +162,7 @@ WHERE p.is_active = 1 AND p.store_id = ? ORDER BY p.name", [$sid]);
 {
     $sid = $this->need($r, 'products');
     $v = $r->validate([
+        'is_repacked' => 'nullable|boolean',
         'low_stock' => 'nullable|integer|min:0',
         'name' => 'required|string|max:120', 'description' => 'nullable|string|max:500',
         'cat' => 'nullable|string|max:80',
@@ -181,6 +182,7 @@ WHERE p.is_active = 1 AND p.store_id = ? ORDER BY p.name", [$sid]);
     $pack = $v['sold_by'] === 'piece' ? null : (int) $v['pack_qty'];
 $in = $v['sold_by'] === 'box' ? $v['box_contains'] : null;
     DB::table('products')->insert([
+        'is_repacked' => !empty($v['is_repacked']) ? 1 : 0,
         'sold_by' => $v['sold_by'], 'pack_qty' => $pack, 'box_contains' => $in,
 'is_homemade' => !empty($v['is_homemade']) ? 1 : 0,
         'low_stock' => $v['low_stock'] ?? 10,
