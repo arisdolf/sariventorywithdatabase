@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { api } from '../services/api'
 import Terms from '../components/Terms'
-import { STORE_TYPES } from '../utils/format'
 import Verify from './Verify'
 import ForgotPassword from './ForgotPassword'
+import { STORE_TYPES, PW_HINT, strongPw } from '../utils/format'
 const TODAY = new Date().toISOString().slice(0, 10)
 
 // Defined outside the page so inputs keep focus while typing
@@ -49,7 +49,9 @@ export default function Login({ onLogin, start = 'login', onHome }) {
     setErr('')
     const signup = screen === 'signup'
     if (signup && f.password !== f.confirm) return setErr('Passwords do not match')
+      if (signup && !strongPw(f.password)) return setErr(PW_HINT)
     if (signup && !f.terms) return setErr('Please agree to the Terms and Conditions')
+      
     setBusy(true)
         try {
       if (!signup) {
@@ -146,7 +148,7 @@ if (waiting) return (
         <Field label="Middle name (optional)" value={f.middle_name} onChange={set('middle_name')} />
       
         <Field label="Email" type="email" required value={f.email} onChange={set('email')} />
-        <Field label="Password (at least 8 characters)" type="password" required minLength={8} value={f.password} onChange={set('password')} />
+        <Field label={`Password (${PW_HINT})`} type="password" required minLength={8} value={f.password} onChange={set('password')} />
         <Field label="Confirm password" type="password" required value={f.confirm} onChange={set('confirm')} />
 
                 <label className="check">

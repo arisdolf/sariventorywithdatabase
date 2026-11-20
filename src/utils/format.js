@@ -12,7 +12,8 @@ export const STORE_TYPES = [
   ['online_seller', 'Online seller'],
   ['other', 'Other'],
 ]
-
+export const PW_HINT = 'At least 8 characters with uppercase, lowercase, a number and a symbol'
+export const strongPw = p => p.length >= 8 && /[a-z]/.test(p) && /[A-Z]/.test(p) && /\d/.test(p) && /[^A-Za-z0-9]/.test(p)
 export const UNITS = [['mg', 'mg'], ['g', 'g'], ['kg', 'kg'], ['oz', 'oz'], ['lb', 'lb'], ['ml', 'ml'], ['l', 'L'], ['gal', 'gal']]
 export const BASE = { mg: 0.001, g: 1, kg: 1000, oz: 28.3495, lb: 453.592, ml: 1, l: 1000, gal: 3785.41 } // to grams or ml
 export const MASS = ['mg', 'g', 'kg', 'oz', 'lb']
