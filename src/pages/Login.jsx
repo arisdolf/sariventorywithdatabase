@@ -16,7 +16,7 @@ function Shell({ title, sub, children, onHome, screen, onSwitch }) {
         <div className="logo" style={{ padding: '10px 0 0' }}>Sari<span>ventory</span></div>
         <div className={`auth-tabs${screen === 'signup' ? ' is-signup' : ''}`} role="group" aria-label="Account access">
           <button type="button" className={screen === 'login' ? 'active' : ''} aria-current={screen === 'login' ? 'page' : undefined} onClick={() => onSwitch('login')}>Login</button>
-          <button type="button" className={screen === 'signup' ? 'active' : ''} aria-current={screen === 'signup' ? 'page' : undefined} onClick={() => onSwitch('signup')}>Sign in</button>
+          <button type="button" className={screen === 'signup' ? 'active' : ''} aria-current={screen === 'signup' ? 'page' : undefined} onClick={() => onSwitch('signup')}>Sign up</button>
         </div>
         <div key={screen} className="auth-content">
           <h2 className="auth-title">{title}</h2>
@@ -115,7 +115,7 @@ if (waiting) return (
 )
   /* ---------- Log in ---------- */
   if (screen === 'login') return (
-  <Shell title="Welcome back" sub="Sign in to manage your store." onHome={onHome} screen={screen} onSwitch={go}>
+  <Shell title="Welcome back" sub="Sign up to manage your store." onHome={onHome} screen={screen} onSwitch={go}>
     <form onSubmit={submit}>
       {notice && <p className="auth-note">{notice}</p>}
         

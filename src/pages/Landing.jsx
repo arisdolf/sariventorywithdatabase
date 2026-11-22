@@ -34,7 +34,7 @@ export default function Landing({ onLogin, onSignup }) {
           </nav>
           <div className="lp-nav-btns">
             <button type="button" className="btn ghost sm" onClick={onLogin}>Login</button>
-            <button type="button" className="btn sm" onClick={onSignup}>Sign in</button>
+            <button type="button" className="btn sm" onClick={onSignup}>Sign up</button>
           </div>
         </div>
       </header>
@@ -47,7 +47,7 @@ export default function Landing({ onLogin, onSignup }) {
               <h1>Spend less time counting. More time running your store.</h1>
               <p>Keep products, stock and sales together in one simple place. Sariventory is made for sari-sari stores, market stalls and small businesses.</p>
               <div className="lp-cta">
-                <button type="button" className="btn" onClick={onSignup}>Sign in <span aria-hidden="true">→</span></button>
+                <button type="button" className="btn" onClick={onSignup}>Sign up <span aria-hidden="true">→</span></button>
                 <button type="button" className="btn ghost" onClick={onLogin}>I already have an account · Login</button>
               </div>
               <p className="lp-reassure"><span aria-hidden="true">✓</span> Set up at your own pace <span className="lp-reassure-sep">·</span> Invite your team when you’re ready</p>
@@ -133,9 +133,9 @@ export default function Landing({ onLogin, onSignup }) {
             <div className="lp-final">
               <span className="lp-kicker">YOUR STORE, A LITTLE MORE ORGANIZED</span>
               <h2>Ready to get your store in view?</h2>
-              <p>Sign in to start a store, or log in to join your team with a store code.</p>
+              <p>Sign up to start a store, or log in to join your team with a store code.</p>
               <div className="lp-cta lp-cta-center">
-                <button type="button" className="btn lp-btn-inv" onClick={onSignup}>Sign in <span aria-hidden="true">→</span></button>
+                <button type="button" className="btn lp-btn-inv" onClick={onSignup}>Sign up<span aria-hidden="true">→</span></button>
                 <button type="button" className="btn lp-btn-line" onClick={onLogin}>Login</button>
               </div>
             </div>

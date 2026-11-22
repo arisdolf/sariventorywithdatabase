@@ -1,5 +1,5 @@
 FROM php:8.4-apache
-RUN apt-get update && apt-get install -y git unzip libzip-dev libpq-dev \
+RUN apt-get update && apt-get install -y --no-install-recommends git unzip libzip-dev libpq-dev \
     && docker-php-ext-install pdo_mysql pdo_pgsql zip \
     && a2enmod rewrite && rm -rf /var/lib/apt/lists/*
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
@@ -10,4 +10,5 @@ WORKDIR /var/www/html
 COPY . .
 RUN composer install --no-dev --optimize-autoloader --no-interaction \
     && chown -R www-data:www-data storage bootstrap/cache
-CMD ["sh", "-c", "php artisan config:cache && apache2-foreground"]
+EXPOSE 10000
+CMD ["sh", "-c", "port=${PORT:-10000}; sed -ri \"s/Listen 80/Listen $port/; s/<VirtualHost \\*:80>/<VirtualHost *:$port>/\" /etc/apache2/ports.conf /etc/apache2/sites-available/000-default.conf && php artisan config:cache && apache2-foreground"]
