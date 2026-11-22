@@ -27,7 +27,7 @@ export default function NewSale({ D, run, toast, cart, setCart, user }) {
   const add = (p, n) => {
     const c = cart.find(i => i.id === p.id), have = (c?.qty || 0) + n
     if (have > p.qty) return toast('Only ' + p.qty + ' in stock')
-    setCart(c ? cart.map(i => i.id === p.id ? { ...i, qty: have } : i) : [...cart, { id: p.id, name: p.name, price: p.price, qty: n }])
+    setCart(c ? cart.map(i => i.id === p.id ? { ...i, qty: have } : i) : [...cart, { id: p.id, name: p.name, code: p.code, price: p.price, qty: n }])
     setSel(''); setSq(''); setCq(1); setOpen(false)
   }
 
@@ -68,7 +68,7 @@ export default function NewSale({ D, run, toast, cart, setCart, user }) {
       <h1>New sale</h1><p className="sub">Pick items, then complete the sale. Stock updates automatically.</p>
       <div className="bar">
         <div className="pick" onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false) }}>
-          <input placeholder="Search or pick a product" value={sq} autoComplete="off"
+          <input placeholder="Search a product or scan its barcode" value={sq} autoComplete="off"
             onFocus={() => setOpen(true)}
             onChange={e => { setSq(e.target.value); setSel(''); setOpen(true) }}
             onKeyDown={e => {
@@ -82,7 +82,10 @@ export default function NewSale({ D, run, toast, cart, setCart, user }) {
           <button type="button" className="caret" aria-label="Show all products" onClick={() => setOpen(o => !o)}>▾</button>
           {open && <ul className="opts" onMouseDown={e => e.preventDefault()}>
             {pick.length
-              ? pick.map(p => <li key={p.id}><button type="button" onClick={() => choose(p)}><span>{p.name}</span><small>{peso(p.price)} · {p.qty} left</small></button></li>)
+              ? pick.map(p => <li key={p.id}><button type="button" onClick={() => choose(p)}>
+                <span className="sale-option-copy"><b>{p.name}</b><small>{p.code ? `Barcode: ${p.code}` : 'No barcode set'}</small></span>
+                <small>{peso(p.price)} · {p.qty} left</small>
+              </button></li>)
               : <li className="none">No matching products</li>}
           </ul>}
         </div>
@@ -90,7 +93,7 @@ export default function NewSale({ D, run, toast, cart, setCart, user }) {
         <button className="btn" onClick={addToCart}>Add to sale</button>
       </div>
       <div className="tw">{cart.length ? <table><thead><tr><th>Item</th><th>Qty</th><th>Subtotal</th><th></th></tr></thead><tbody>
-        {cart.map((c, i) => <tr key={c.id}><td className="main">{c.name}</td><td data-label="Qty">{c.qty}</td><td data-label="Subtotal">{peso(c.price * c.qty)}</td><td className="act"><button className="btn ghost sm" onClick={() => setCart(cart.filter(c2 => c2.id !== c.id))}>Remove</button></td></tr>)}
+        {cart.map(c => <tr key={c.id}><td className="main">{c.name}{c.code && <small className="sale-barcode">Barcode: {c.code}</small>}</td><td data-label="Qty">{c.qty}</td><td data-label="Subtotal">{peso(c.price * c.qty)}</td><td className="act"><button className="btn ghost sm" onClick={() => setCart(cart.filter(c2 => c2.id !== c.id))}>Remove</button></td></tr>)}
       </tbody></table> : <Empty>The sale is empty. Add a product above.</Empty>}</div>
 
       <div className="tot">Total: {peso(cartTotal)}</div>

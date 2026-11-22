@@ -22,7 +22,7 @@ const Section = ({ title, sub, children }) => (
   </section>
 )
 
-export default function Settings({ user, run, toast, setView }) {
+export default function Settings({ user, run, toast, setView, verificationRequired = false, onOpenRequirements = () => {} }) {
   const perms = user?.perms || []
   const isOwner = perms.includes('team')
 
@@ -33,6 +33,11 @@ export default function Settings({ user, run, toast, setView }) {
   const perm = supported() ? Notification.permission : 'unsupported'
 
   const saveReset = e => { e.preventDefault(); run(() => api('/settings/orders', 'PUT', { reset }), 'Order numbering saved') }
+  const openReport = view => {
+    if (verificationRequired) return onOpenRequirements()
+    setView(view)
+    window.scrollTo(0, 0)
+  }
 
   const saveNotify = next => run(() => api('/settings/notifications', 'PUT', next), 'Saved')
   const toggleOn = async e => {
@@ -107,15 +112,15 @@ export default function Settings({ user, run, toast, setView }) {
         <Section title="Reports and history">
           <div className="go-list">
             {perms.includes('analytics') && (
-              <button type="button" className="go" onClick={() => { setView('analytics'); window.scrollTo(0, 0) }}>
-                <span><b>Analytics</b><br /><small>Sales over days, weeks, months and years</small></span>
-                <span className="chev">›</span>
+              <button type="button" className={'go' + (verificationRequired ? ' go-locked' : '')} onClick={() => openReport('analytics')}>
+                <span><b>Analytics</b><br /><small>Sales over days, weeks, months and years</small>{verificationRequired && <small className="go-lock-note">Complete requirements to unlock.</small>}</span>
+                <span className={verificationRequired ? 'go-lock-state' : 'chev'}>{verificationRequired ? 'Locked' : '›'}</span>
               </button>
             )}
             {perms.includes('activity') && (
-              <button type="button" className="go" onClick={() => { setView('activity'); window.scrollTo(0, 0) }}>
-                <span><b>Activity center</b><br /><small>What everyone on your team has done</small></span>
-                <span className="chev">›</span>
+              <button type="button" className={'go' + (verificationRequired ? ' go-locked' : '')} onClick={() => openReport('activity')}>
+                <span><b>Activity center</b><br /><small>Changes made by you and your team</small>{verificationRequired && <small className="go-lock-note">Complete requirements to unlock.</small>}</span>
+                <span className={verificationRequired ? 'go-lock-state' : 'chev'}>{verificationRequired ? 'Locked' : '›'}</span>
               </button>
             )}
           </div>

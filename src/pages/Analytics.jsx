@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import Empty from '../components/Empty'
+import SearchSelect from '../components/SearchSelect'
 import { PageSkeleton } from '../components/Skeleton'
 import { api } from '../services/api'
 import { peso } from '../utils/format'
@@ -31,12 +32,8 @@ function MonthPick({ value, onChange }) {
   const [y, m] = value.split('-')
   return (
     <span style={{ display: 'flex', gap: 8, flex: '1 1 240px' }}>
-      <select value={m} onChange={e => onChange(y + '-' + e.target.value)} aria-label="Month" style={{ flex: 1 }}>
-        {MONTHS.map((name, i) => <option key={name} value={String(i + 1).padStart(2, '0')}>{name}</option>)}
-      </select>
-      <select value={y} onChange={e => onChange(e.target.value + '-' + m)} aria-label="Year">
-        {YEARS.map(yr => <option key={yr} value={yr}>{yr}</option>)}
-      </select>
+      <SearchSelect label="Month" value={m} onChange={value => onChange(y + '-' + value)} options={MONTHS.map((name, i) => [String(i + 1).padStart(2, '0'), name])} style={{ flex: 1 }} />
+      <SearchSelect label="Year" value={y} onChange={value => onChange(value + '-' + m)} options={YEARS.map(yr => [yr, yr])} style={{ flex: '0 1 100px' }} />
     </span>
   )
 }
@@ -81,7 +78,20 @@ export default function Analytics({ toast, embedded, setView }) {
   const groups = GROUPS.filter(([k]) => custom ? customOk(k, months) : groupOk(k, unit, n, meta))
   const canYears = meta.age_years >= 1
   const max = Math.max(...series.map(s => s.sales), 1)
-  const step = series.length > 40 ? 3 : series.length > 14 ? 2 : 1  // show about 6 labels max
+  const plotTop = 8
+  const plotBottom = 222
+  const chartPoints = series.map((item, index) => ({
+    item,
+    x: series.length === 1 ? 500 : 12 + index * (976 / (series.length - 1)),
+    y: plotTop + (plotBottom - plotTop) * (1 - item.sales / max),
+  }))
+  const linePath = chartPoints.map(({ x, y }, index) => `${index ? 'L' : 'M'} ${x} ${y}`).join(' ')
+  const labelStep = Math.max(1, Math.ceil((series.length - 1) / 5))
+  const xLabels = chartPoints.filter((_, index) => index % labelStep === 0 || index === series.length - 1)
+  const yTicks = Array.from({ length: 5 }, (_, index) => ({
+    y: plotTop + (plotBottom - plotTop) * index / 4,
+    value: max * (1 - index / 4),
+  }))
 
   // Change the quick range, and move to a valid grouping if the current one no longer fits
   const setRange = (u, k) => {
@@ -113,9 +123,8 @@ export default function Analytics({ toast, embedded, setView }) {
         </div>
 
         {!custom && <>
-          <select value={n} onChange={e => setRange(unit, +e.target.value)}>
-            {steps.map(s => <option key={s} value={s}>Last {s} {unit === 'years' ? (s === 1 ? 'year' : 'years') : (s === 1 ? 'month' : 'months')}</option>)}
-          </select>
+          <SearchSelect label="Date range" value={n} onChange={value => setRange(unit, +value)}
+            options={steps.map(s => [s, `Last ${s} ${unit === 'years' ? (s === 1 ? 'year' : 'years') : (s === 1 ? 'month' : 'months')}`])} />
           {canYears && (
             <div className="seg" style={{ margin: 0 }}>
               <button type="button" className={unit === 'months' ? 'on' : ''} onClick={() => setRange('months', 1)}>Months</button>
@@ -145,13 +154,27 @@ export default function Analytics({ toast, embedded, setView }) {
           </div>
 
           {totals.orders ? <>
-            <div className="an-chart" ref={el => { if (el) el.scrollLeft = el.scrollWidth }}>
-              {series.map((s, i) => (
-                <div className="an-col" key={s.key} title={`${s.label}: ${peso(s.sales)} · ${s.orders} order${s.orders === 1 ? '' : 's'}`}>
-                  <div className="an-plot"><div className="an-bar" style={{ height: (s.sales / max * 100) + '%' }} /></div>
-                  <small>{i % step === 0 ? s.label : ''}</small>
-                </div>
-              ))}
+            <div className="an-line-chart" role="img" aria-label="Sales line chart by period. Exact values are listed in the table below.">
+              <div className="an-line-y-axis" aria-hidden="true">
+                {yTicks.map((tick, index) => <span key={index}>{peso(Math.round(tick.value)).replace(/\.00$/, '')}</span>)}
+              </div>
+              <svg className="an-line-svg" viewBox="0 0 1000 230" preserveAspectRatio="none" aria-hidden="true">
+                {yTicks.map((tick, index) => <line key={index} className="an-line-grid" x1="0" x2="1000" y1={tick.y} y2={tick.y} />)}
+                {chartPoints.length > 1 && <path className="an-line-path" d={linePath} pathLength="1" />}
+                {chartPoints.map(({ item, x, y }, index) => (
+                  <circle key={item.key} className="an-line-point" style={{ animationDelay: `${Math.min(index, 10) * 24}ms` }} cx={x} cy={y} r="4">
+                    <title>{`${item.label}: ${peso(item.sales)} · ${item.orders} order${item.orders === 1 ? '' : 's'}`}</title>
+                  </circle>
+                ))}
+              </svg>
+              <div className="an-line-x-spacer" aria-hidden="true" />
+              <div className="an-line-x-axis" aria-hidden="true">
+                {xLabels.map(({ item, x }, index) => {
+                  const first = item.key === series[0].key
+                  const last = item.key === series[series.length - 1].key
+                  return <span key={item.key} className={`an-line-x-label${first ? ' is-first' : ''}${last ? ' is-last' : ''}${index % 2 === 1 && !last ? ' hide-mobile' : ''}`} style={{ left: `${x / 10}%` }}>{item.label}</span>
+                })}
+              </div>
             </div>
 
             <div className="tw scroll"><table>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Empty from '../components/Empty'
 import StatusPill from '../components/StatusPill'
 import { api } from '../services/api'
+import SearchSelect from '../components/SearchSelect'
 
 const SOON = 30 // days
 const dayDiff = e => Math.round((new Date(e + 'T00:00') - new Date(new Date().toLocaleDateString('en-CA') + 'T00:00')) / 864e5)
@@ -92,18 +93,10 @@ export default function Inventory({ D, run, setModal }) {
       <h1>Inventory</h1><p className="sub">Receive stock in batches and keep track of expiry dates.</p>
       <div className="bar">
         <input placeholder="Search product, barcode or batch number" value={q} onChange={e => setQ(e.target.value)} style={{ flex: 1, minWidth: 160 }} />
-        <select value={cat} onChange={e => setCat(e.target.value)} aria-label="Filter by category">
-          <option value="">All categories</option>
-          {cats.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-          <option value="__none">No category</option>
-        </select>
-        <select value={status} onChange={e => setStatus(e.target.value)} aria-label="Filter by status">
-          <option value="">All stock</option>
-          <option value="low">Low stock</option>
-          <option value="out">Out of stock</option>
-          <option value="soon">Expiring in {SOON} days</option>
-          <option value="expired">Has expired stock</option>
-        </select>
+        <SearchSelect className="bar-select" label="Filter by category" value={cat} onChange={setCat}
+          options={[['', 'All categories'], ...cats.map(c => [c.name, c.name]), ['__none', 'No category']]} />
+        <SearchSelect className="bar-select" label="Filter by status" value={status} onChange={setStatus}
+          options={[['', 'All stock'], ['low', 'Low stock'], ['out', 'Out of stock'], ['soon', `Expiring in ${SOON} days`], ['expired', 'Has expired stock']]} />
         <button className="btn" onClick={() => receive()}>Receive stock</button>
       </div>
 

@@ -20,6 +20,7 @@ import { show } from './utils/notify'
 import Landing from './pages/Landing'
 import Inventory from './pages/Inventory'
 import Expenses from './pages/Expenses'
+import StoreVerification, { StoreAccessNotice } from './pages/StoreVerification'
 const EMPTY = { products: [], suppliers: [], orders: [], moves: [] }
 
 const home = u => {
@@ -28,7 +29,11 @@ const home = u => {
 }
 
 export default function App() {
-  const [auth, setAuth] = useState(null) // null = landing page, 'login' or 'signup'
+  const readAuth = () => {
+    const value = new URLSearchParams(window.location.search).get('auth')
+    return value === 'login' || value === 'signup' ? value : null
+  }
+  const [auth, setAuth] = useState(readAuth)
   const [loading, setLoading] = useState(true)
   const [D, setD] = useState(EMPTY)
    const [user, setUser] = useState(() => {
@@ -39,24 +44,45 @@ export default function App() {
   const [modal, setModal] = useState(null)
   const [msg, setMsg] = useState('')
 
+  const navigateAuth = next => {
+    if (readAuth() === next) return
+    const url = new URL(window.location.href)
+    if (next) url.searchParams.set('auth', next)
+    else url.searchParams.delete('auth')
+    window.history.pushState({}, '', url)
+    setAuth(next)
+  }
+
+  useEffect(() => {
+    const syncAuth = () => setAuth(readAuth())
+    window.addEventListener('popstate', syncAuth)
+    return () => window.removeEventListener('popstate', syncAuth)
+  }, [])
+
   const toastTimer = useRef(null)
   const toast = useCallback(m => {
     setMsg(m)
     clearTimeout(toastTimer.current)
     toastTimer.current = setTimeout(() => setMsg(''), 2500)
   }, [])
-  const refresh = () => api('/data').then(setD).catch(e => toast(e.message || 'Cannot reach the server. Is php artisan serve running?')).finally(() => setLoading(false))
+  const refresh = () => api('/data').then(data => {
+    setD(data)
+    if (data.me && data.me.storeVerified !== user?.storeVerified) {
+      localStorage.setItem('user', JSON.stringify(data.me))
+      setUser(data.me)
+    }
+  }).catch(e => toast(e.message || 'Cannot reach the server. Is php artisan serve running?')).finally(() => setLoading(false))
 
   useEffect(() => { if (user) refresh() }, [user])
   useEffect(() => {
-  const h = () => { setUser(null); setD(EMPTY); setAuth(null) }
+  const h = () => { setUser(null); setD(EMPTY); navigateAuth('login') }
   window.addEventListener('logout', h)
   return () => window.removeEventListener('logout', h)
 }, [])
 
   // Checks for new activity every 30 seconds when notifications are on
   const lastSeen = useRef(null)
-  const notifyOn = !!D.me?.notify?.on
+  const notifyOn = !!D.me?.notify?.on && D.me?.storeVerified !== false
   useEffect(() => {
     if (!user || !notifyOn) return
     lastSeen.current = null
@@ -84,7 +110,7 @@ export default function App() {
   const logout = async () => {
   try { await api('/logout', 'POST') } catch { }
   localStorage.removeItem('token'); localStorage.removeItem('user')
-  setUser(null); setD(EMPTY); setView('dash'); setCart([]); setModal(null); setAuth(null)
+  setUser(null); setD(EMPTY); setView('dash'); setCart([]); setModal(null); navigateAuth('login')
 }
 
   // Runs an API call, reloads data, closes the form and shows a message
@@ -94,8 +120,8 @@ export default function App() {
   }
 
  if (!user) return auth
-  ? <Login onLogin={login} start={auth} onHome={() => setAuth(null)} />
-  : <Landing onLogin={() => setAuth('login')} onSignup={() => setAuth('signup')} />
+  ? <Login onLogin={login} start={auth} onNavigateAuth={navigateAuth} onHome={() => navigateAuth(null)} />
+  : <Landing onLogin={() => navigateAuth('login')} onSignup={() => navigateAuth('signup')} />
 
   const me = D.me || user
   const perms = me.perms || []
@@ -115,29 +141,41 @@ export default function App() {
     settings: true,
   }
   const page = allowed[view] ? view : 'dash'
+  const verificationRequired = me.storeVerified === false
+  const lockedSections = {
+    stock: 'Stock movements', sup: 'Suppliers', exp: 'Expenses', team: 'Team',
+    sales: 'Sales history', analytics: 'Analytics', activity: 'Activity center',
+  }
+  const openRequirements = () => {
+    setView('dash')
+    window.setTimeout(() => document.getElementById('store-requirements')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
+  }
 
     const shared = { D, run, toast, setModal, user: me, onLogout: logout, setView }
-  const busy = loading && ['dash', 'prod', 'inv', 'sale', 'stock', 'sup'].includes(page)
+  const busy = !verificationRequired && loading && ['dash', 'prod', 'inv', 'sale', 'stock', 'sup'].includes(page)
   return (
 
     <>
             <Nav view={['analytics', 'activity'].includes(page) ? 'settings' : page} setView={setView} perms={perms} store={me.store} onLogout={logout} />
       <main>
         <div key={page} className="page">
-          {page === 'exp' && <Expenses {...shared} />}
-          {page === 'analytics' && <Analytics {...shared} />}
+          {verificationRequired && page === 'dash' && <Dashboard {...shared} verificationRequired onOpenRequirements={openRequirements} />}
+          {verificationRequired && lockedSections[page] && <StoreAccessNotice section={lockedSections[page]} onOpenRequirements={openRequirements} />}
+          {!verificationRequired && page === 'exp' && <Expenses {...shared} />}
+          {!verificationRequired && page === 'analytics' && <Analytics {...shared} />}
           {busy && <PageSkeleton page={page} />}
           {!busy && page === 'inv' && <Inventory {...shared} />}
           {page === 'profile' && <Profile {...shared} />}
-          {page === 'sales' && <Sales {...shared} />}
-          {page === 'team' && <Team {...shared} />}
-          {!busy && page === 'dash' && <Dashboard {...shared} />}
+          {!verificationRequired && page === 'sales' && <Sales {...shared} />}
+          {!verificationRequired && page === 'team' && <Team {...shared} />}
+          {!verificationRequired && !busy && page === 'dash' && <Dashboard {...shared} />}
+          {verificationRequired && page === 'dash' && <StoreVerification user={me} onVerified={() => { toast('Required photos received. Store access unlocked.'); refresh() }} />}
           {!busy && page === 'prod' && <Products {...shared} />}
           {!busy && page === 'sale' && <NewSale {...shared} cart={cart} setCart={setCart} />}
-          {!busy && page === 'stock' && <StockMovements {...shared} />}
-          {!busy && page === 'sup' && <Suppliers {...shared} />}
-          {page === 'activity' && <Activity {...shared} />}
-          {page === 'settings' && <Settings {...shared} />}
+          {!busy && !verificationRequired && page === 'stock' && <StockMovements {...shared} />}
+          {!busy && !verificationRequired && page === 'sup' && <Suppliers {...shared} />}
+          {!verificationRequired && page === 'activity' && <Activity {...shared} />}
+          {page === 'settings' && <Settings {...shared} verificationRequired={verificationRequired} onOpenRequirements={openRequirements} />}
         </div>
       </main>
       {modal && <Modal {...modal} onSave={modal.save} onClose={() => setModal(null)} />}

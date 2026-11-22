@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -23,11 +22,11 @@ class User extends Authenticatable
 
     // key => [label, permissions]
     const ROLES = [
-       'owner'   => ['Owner',   ['sell', 'products', 'stock', 'suppliers', 'costs', 'team', 'history', 'void', 'analytics', 'activity', 'revenue']],
+        'owner' => ['Owner',   ['sell', 'products', 'stock', 'suppliers', 'costs', 'team', 'history', 'void', 'analytics', 'activity', 'revenue']],
         'manager' => ['Manager', ['sell', 'products', 'stock', 'suppliers', 'costs', 'history', 'void', 'analytics', 'activity', 'revenue']],
-        'cashier'   => ['Cashier',   ['sell', 'history']],
+        'cashier' => ['Cashier',   ['sell', 'history']],
         'inventory' => ['Inventory', ['products', 'stock', 'suppliers']],
-        'viewer'    => ['Viewer',    ['revenue']],
+        'viewer' => ['Viewer',    ['revenue']],
     ];
 
     public function perms(): array
@@ -40,7 +39,16 @@ class User extends Authenticatable
         return in_array($p, $this->perms(), true);
     }
 
-        public function notifyPrefs(): array
+    public function storeVerified(): bool
+    {
+        if (! $this->store_id) {
+            return false;
+        }
+
+        return DB::table('stores')->where('store_id', $this->store_id)->where('verification_status', 'verified')->exists();
+    }
+
+    public function notifyPrefs(): array
     {
         return (json_decode($this->notify_prefs ?? '', true) ?: [])
             + ['on' => false, 'sales' => true, 'stock' => true, 'team' => true];
@@ -48,7 +56,8 @@ class User extends Authenticatable
 
     public function toClient(): array
     {
-        $s = DB::table('stores')->where('store_id', $this->store_id)->first(['name', 'store_type', 'order_reset']);
+        $s = DB::table('stores')->where('store_id', $this->store_id)->first(['name', 'store_type', 'order_reset', 'verification_status']);
+
         return [
             'id' => $this->getKey(),
             'name' => $this->name,
@@ -58,12 +67,12 @@ class User extends Authenticatable
             'roleLabel' => self::ROLES[$this->role][0] ?? $this->role,
             'store' => $s->name ?? null,
             'storeType' => $s->store_type ?? null,
+            'storeVerified' => $s ? $s->verification_status === 'verified' : false,
             'orderReset' => $s->order_reset ?? 'daily',
             'notify' => $this->notifyPrefs(),
             'perms' => $this->perms(),
         ];
     }
-  
 
     public function getAuthPassword()
     {

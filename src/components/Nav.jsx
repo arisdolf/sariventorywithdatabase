@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 const ICONS = {
   dash: <><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></>,
@@ -30,6 +30,12 @@ const MAIN = ['dash', 'sale', 'inv', 'prod', 'sales', 'stock']
 
 export default function Nav({ view, setView, perms = [], store, onLogout }) {
   const [more, setMore] = useState(false)
+  useEffect(() => {
+    if (!more) return
+    const closeOnEscape = e => { if (e.key === 'Escape') setMore(false) }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [more])
   const groups = GROUPS
     .map(([name, tabs]) => [name, tabs.filter(t => !t[3] || perms.includes(t[3]))])
     .filter(([, tabs]) => tabs.length)
@@ -49,13 +55,13 @@ export default function Nav({ view, setView, perms = [], store, onLogout }) {
   return (
     <>
       {/* Desktop sidebar */}
-      <nav className="side">
+      <nav className="side" aria-label="Store navigation">
         <div className="logo">Sari<span>ventory</span></div>
         {groups.map(([name, tabs]) => (
           <div key={name}>
             <div className="grp">{name}</div>
             {tabs.map(([k, long]) => (
-              <button key={k} className={view === k ? 'on' : ''} onClick={() => go(k)}>
+              <button key={k} className={view === k ? 'on' : ''} aria-current={view === k ? 'page' : undefined} onClick={() => go(k)}>
                 <Icon n={k} /><span>{long}</span>
               </button>
             ))}
@@ -68,25 +74,26 @@ export default function Nav({ view, setView, perms = [], store, onLogout }) {
       <div className="top"><b>{store || 'Sariventory'}</b></div>
 
       {/* Mobile floating tab bar */}
-      <div className="tabbar">
+      <nav className="tabbar" aria-label="Primary store navigation">
         {main.map(([k, , short]) => (
-          <button key={k} className={view === k ? 'on' : ''} onClick={() => go(k)}>
+          <button key={k} className={view === k ? 'on' : ''} aria-current={view === k ? 'page' : undefined} onClick={() => go(k)}>
             <Icon n={k} /><span>{short}</span>
           </button>
         ))}
-        <button className={inMore || more ? 'on' : ''} onClick={() => setMore(true)}>
+        <button className={inMore || more ? 'on' : ''} aria-expanded={more} aria-label="More navigation options" onClick={() => setMore(v => !v)}>
           <Icon n="more" /><span>More</span>
         </button>
-      </div>
+      </nav>
 
             {/* Mobile "More" sheet */}
       {more && <>
-        <div className="scrim" onClick={() => setMore(false)} />
-        <div className="sheet">
-          <div className="grab" />
+        <button type="button" className="scrim" aria-label="Close navigation menu" onClick={() => setMore(false)} />
+        <div className="sheet" role="dialog" aria-modal="true" aria-label="More navigation options">
+          <div className="sheet-head"><b>{store || 'Your store'}</b><button type="button" className="sheet-close" onClick={() => setMore(false)}>Close</button></div>
+          <div className="grab" aria-hidden="true" />
           <div className="tiles">
             {restGroups.flatMap(([, tabs]) => tabs).map(([k, long, short]) => (
-              <button key={k} className={'tile' + (view === k ? ' on' : '')} onClick={() => go(k)}>
+              <button key={k} className={'tile' + (view === k ? ' on' : '')} aria-current={view === k ? 'page' : undefined} onClick={() => go(k)}>
                 <Icon n={k} /><span>{short === 'Me' ? 'Profile' : long}</span>
               </button>
             ))}

@@ -11,6 +11,7 @@ class ActivityController extends Controller
     public function index(Request $r)
     {
         $u = $r->user();
+        abort_unless($u->storeVerified(), 403, 'Complete store requirements to access the activity center');
         abort_unless($u->hasPerm('activity'), 403, 'Only the owner and managers can see the activity center');
         $sid = $u->store_id;
         abort_unless($sid, 403, 'This account is not part of a store');
@@ -22,9 +23,15 @@ class ActivityController extends Controller
             ->selectRaw("a.activity_id id, a.action, a.summary, a.user_id uid, COALESCE(u.name,'Someone') who,
                 DATE_FORMAT(a.created_at,'%b %e, %Y %l:%i %p') at");
 
-        if ($b = (int) $r->query('before')) $q->where('a.activity_id', '<', $b);
-        if ($uid = (int) $r->query('user')) $q->where('a.user_id', $uid);
-        if (($t = $r->query('type')) && isset(Activity::GROUPS[$t])) $q->whereIn('a.action', Activity::GROUPS[$t]);
+        if ($b = (int) $r->query('before')) {
+            $q->where('a.activity_id', '<', $b);
+        }
+        if ($uid = (int) $r->query('user')) {
+            $q->where('a.user_id', $uid);
+        }
+        if (($t = $r->query('type')) && isset(Activity::GROUPS[$t])) {
+            $q->whereIn('a.action', Activity::GROUPS[$t]);
+        }
 
         $rows = $q->get()->all();
         $more = count($rows) > 40;
@@ -32,7 +39,7 @@ class ActivityController extends Controller
         return [
             'items' => array_slice($rows, 0, 40),
             'more' => $more,
-            'members' => DB::select("SELECT user_id id, name FROM users WHERE store_id = ? ORDER BY name", [$sid]),
+            'members' => DB::select('SELECT user_id id, name FROM users WHERE store_id = ? ORDER BY name', [$sid]),
         ];
     }
 }

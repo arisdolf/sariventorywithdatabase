@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Hash;
 class SariSariSeeder extends Seeder
 {
     const STORE = "Rudolf's Sari-Sari Store";
+
     const PASSWORD = '123123123'; // <- change this before running
 
     public function run(): void
@@ -18,13 +19,15 @@ class SariSariSeeder extends Seeder
         mt_srand(2027); // same data every time
         DB::disableQueryLog();
 
-        $emails = ['rudolfdee13@gmail.com', 'dolfdeearis@gmail.com', 'ty202500742@gmail.com', 'alugwapu12@gmail.com'];
+        $emails = ['rudolfdee13@gmail.com', 'dolfdeearis@gmail.com'];
         if (DB::table('users')->whereIn('email', $emails)->exists()) {
             $this->command->error('One of these emails already has an account. Run the cleanup SQL first.');
+
             return;
         }
         if (DB::table('stores')->where('name', self::STORE)->exists()) {
             $this->command->error('This store already exists. Run the cleanup SQL first.');
+
             return;
         }
 
@@ -36,7 +39,8 @@ class SariSariSeeder extends Seeder
         /* ---------- Store ---------- */
         $sid = DB::table('stores')->insertGetId([
             'name' => self::STORE, 'join_code' => AuthController::makeCode(),
-            'store_type' => 'sari_sari', 'created_at' => $start,
+            'store_type' => 'sari_sari', 'verification_status' => 'pending',
+            'verified_at' => null, 'created_at' => $start,
         ]);
         $code = DB::table('stores')->where('store_id', $sid)->value('join_code');
 
@@ -45,11 +49,10 @@ class SariSariSeeder extends Seeder
         $defs = [
             ['Rudolf', null, 'Ariston', 'owner', 0, '2003-12-12', 'rudolfdee13@gmail.com'],
             ['Dolf', null, 'Aris', 'manager', 4, '2000-05-20', 'dolfdeearis@gmail.com'],
-            ['Alex', null, 'Mendoza', 'inventory', 14, '1999-08-09', 'alugwapu12@gmail.com'],
-            ['Tyrone', null, 'Santos', 'cashier', 26, '2002-02-27', 'ty202500742@wmsu.edu.ph'],
         ];
         $hash = Hash::make(self::PASSWORD);
-        $staff = []; $acts = [];
+        $staff = [];
+        $acts = [];
         foreach ($defs as [$first, $mid, $last, $role, $m, $bd, $email]) {
             $joined = $start->copy()->addMonths($m)->setTime(9, 0);
             $name = trim(implode(' ', array_filter([$first, $mid, $last])));
@@ -60,9 +63,13 @@ class SariSariSeeder extends Seeder
                 'terms_accepted_at' => $joined, 'store_id' => $sid,
             ]);
             $staff[] = ['id' => $id, 'role' => $role, 'joined' => $joined, 'email' => $email];
-            if ($role === 'owner') { DB::table('stores')->where('store_id', $sid)->update(['owner_id' => $id]); $ownerId = $id; }
-            if ($role === 'manager') $managerId = $id;
-            if ($role === 'inventory') { $invId = $id; $invJoined = $joined; }
+            if ($role === 'owner') {
+                DB::table('stores')->where('store_id', $sid)->update(['owner_id' => $id]);
+                $ownerId = $id;
+            }
+            if ($role === 'manager') {
+                $managerId = $id;
+            }
             if ($role !== 'owner') {
                 $acts[] = ['store_id' => $sid, 'user_id' => $id, 'action' => 'team', 'summary' => "$name joined the team", 'created_at' => $joined];
             }
@@ -87,13 +94,17 @@ class SariSariSeeder extends Seeder
         /* ---------- Categories ---------- */
         $cats = [];
         foreach (['Drinks', 'Snacks', 'Noodles & Instant Food', 'Canned Goods', 'Rice & Cooking Essentials',
-                  'Bread, Eggs & Dairy', 'Candy & Sweets', 'Frozen & Ice', 'Laundry & Cleaning',
-                  'Personal Care', 'Medicines & First Aid', 'School Supplies', 'Household Items'] as $c) {
+            'Bread, Eggs & Dairy', 'Candy & Sweets', 'Frozen & Ice', 'Laundry & Cleaning',
+            'Personal Care', 'Medicines & First Aid', 'School Supplies', 'Household Items'] as $c) {
             $cats[$c] = DB::table('categories')->insertGetId(['store_id' => $sid, 'name' => $c]);
         }
 
         /* ---------- Products ---------- */
         // name, category, cost now, price now, popularity 1-10, expiry (0 none, 1 perishable, 2 slow)
+        $homemadeDescriptions = [
+            'Homemade Banana Cue' => 'Homemade: saba banana, brown sugar, cooking oil',
+            'Homemade Turon' => 'Homemade: saba banana, jackfruit, brown sugar, wrapper, cooking oil',
+        ];
         $list = [
             // Drinks
             ['Coke Mismo 295ml', 'Drinks', 12, 18, 10, 0], ['Sprite Mismo 295ml', 'Drinks', 12, 18, 8, 0],
@@ -193,6 +204,7 @@ class SariSariSeeder extends Seeder
             ['Safety Matches (box)', 'Household Items', 1.5, 3, 5, 0], ['Lighter', 'Household Items', 10, 18, 4, 0],
             ['Candle (per piece)', 'Household Items', 4, 7, 3, 0], ['Eveready AA Battery 2pcs', 'Household Items', 42, 62, 3, 0],
             ['Tissue Roll (single)', 'Household Items', 12, 20, 5, 0], ['Mosquito Coil (per piece)', 'Household Items', 4, 7, 4, 0],
+            ['Homemade Banana Cue', 'Snacks', 8, 15, 7, 1], ['Homemade Turon', 'Snacks', 10, 20, 6, 1],
         ];
 
         $prod = [];
@@ -201,24 +213,35 @@ class SariSariSeeder extends Seeder
             $low = max(5, (int) round($target * 0.25));
             $id = DB::table('products')->insertGetId([
                 'store_id' => $sid, 'name' => $name, 'category_id' => $cats[$cat],
+                'code' => 'SARI-'.$sid.'-'.str_pad((string) (count($prod) + 1), 5, '0', STR_PAD_LEFT),
+                'description' => $homemadeDescriptions[$name] ?? null,
+                'is_homemade' => isset($homemadeDescriptions[$name]),
                 'cost_price' => $cost, 'unit_price' => $price, 'stock_quantity' => $target,
                 'low_stock' => $low, 'is_active' => 1, 'created_at' => $start,
             ]);
             $prod[$id] = ['name' => $name, 'cat' => $cat, 'price' => $price, 'ratio' => $cost / $price, 'pop' => $pop,
-                          'fresh' => $fresh, 'target' => $target, 'low' => $low, 'stock' => $target];
+                'fresh' => $fresh, 'target' => $target, 'low' => $low, 'stock' => $target];
         }
         $ids = array_keys($prod);
 
         // Seasons: school supplies peak May to August, cold drinks in summer, medicines in the rainy months
         $season = function (string $cat, int $m): float {
-            if ($cat === 'School Supplies') return in_array($m, [5, 6, 7, 8]) ? 3.5 : ($m === 1 ? 1.2 : 0.5);
-            if ($cat === 'Drinks' || $cat === 'Frozen & Ice') return in_array($m, [3, 4, 5]) ? 1.5 : (in_array($m, [12, 1]) ? 1.1 : (in_array($m, [7, 8, 9, 10]) ? 0.9 : 1.0));
-            if ($cat === 'Medicines & First Aid') return $m >= 7 && $m <= 11 ? 1.6 : 1.0;
+            if ($cat === 'School Supplies') {
+                return in_array($m, [5, 6, 7, 8]) ? 3.5 : ($m === 1 ? 1.2 : 0.5);
+            }
+            if ($cat === 'Drinks' || $cat === 'Frozen & Ice') {
+                return in_array($m, [3, 4, 5]) ? 1.5 : (in_array($m, [12, 1]) ? 1.1 : (in_array($m, [7, 8, 9, 10]) ? 0.9 : 1.0));
+            }
+            if ($cat === 'Medicines & First Aid') {
+                return $m >= 7 && $m <= 11 ? 1.6 : 1.0;
+            }
+
             return 1.0;
         };
         $cums = [];
         for ($m = 1; $m <= 12; $m++) {
-            $c = []; $t = 0;
+            $c = [];
+            $t = 0;
             foreach ($ids as $i) {
                 $t += max(1, (int) round(pow($prod[$i]['pop'], 1.5) * 10 * $season($prod[$i]['cat'], $m)));
                 $c[] = $t;
@@ -227,31 +250,54 @@ class SariSariSeeder extends Seeder
         }
         $pick = function (int $m) use ($ids, $cums) {
             [$c, $t] = $cums[$m];
-            $r = mt_rand(1, $t); $lo = 0; $hi = count($c) - 1;
-            while ($lo < $hi) { $mid = ($lo + $hi) >> 1; if ($r <= $c[$mid]) $hi = $mid; else $lo = $mid + 1; }
+            $r = mt_rand(1, $t);
+            $lo = 0;
+            $hi = count($c) - 1;
+            while ($lo < $hi) {
+                $mid = ($lo + $hi) >> 1;
+                if ($r <= $c[$mid]) {
+                    $hi = $mid;
+                } else {
+                    $lo = $mid + 1;
+                }
+            }
+
             return $ids[$lo];
         };
         $priceAt = function (array $p, Carbon $d) use ($today) {
             $f = pow(1.04, -(($today->timestamp - $d->timestamp) / 86400 / 365));
+
             return max(1, round($p['price'] * $f * 2) / 2);
         };
 
         /* ---------- Buffers ---------- */
-        $orders = []; $items = []; $mv = [];
+        $orders = [];
+        $items = [];
+        $mv = [];
         $flush = function () use (&$orders, &$items, &$mv, &$acts) {
-            foreach (array_chunk($orders, 800) as $c) DB::table('orders')->insert($c);
-            foreach (array_chunk($items, 2000) as $c) DB::table('order_items')->insert($c);
-            foreach (array_chunk($mv, 1500) as $c) DB::table('stock_movements')->insert($c);
-            foreach (array_chunk($acts, 1000) as $c) DB::table('activity_log')->insert($c);
+            foreach (array_chunk($orders, 800) as $c) {
+                DB::table('orders')->insert($c);
+            }
+            foreach (array_chunk($items, 2000) as $c) {
+                DB::table('order_items')->insert($c);
+            }
+            foreach (array_chunk($mv, 1500) as $c) {
+                DB::table('stock_movements')->insert($c);
+            }
+            foreach (array_chunk($acts, 1000) as $c) {
+                DB::table('activity_log')->insert($c);
+            }
             $orders = $items = $mv = $acts = [];
         };
         $movement = function ($pid, $type, $qty, $remarks, $when, $uid, $refId = null, $refType = null) use (&$mv, $sid) {
             $mv[] = ['store_id' => $sid, 'user_id' => $uid, 'product_id' => $pid, 'type' => $type, 'quantity' => $qty,
-                     'remarks' => $remarks, 'reference_id' => $refId, 'reference_type' => $refType, 'created_at' => $when];
+                'remarks' => $remarks, 'reference_id' => $refId, 'reference_type' => $refType, 'created_at' => $when];
         };
-        $m = fn($n) => '₱' . number_format((float) $n, 2);
+        $m = fn ($n) => '₱'.number_format((float) $n, 2);
 
-        foreach ($prod as $pid => $p) $movement($pid, 'IN', $p['target'], 'Opening stock', $start->copy()->setTime(8, 0), $ownerId);
+        foreach ($prod as $pid => $p) {
+            $movement($pid, 'IN', $p['target'], 'Opening stock', $start->copy()->setTime(8, 0), $ownerId);
+        }
 
         $hours = [5, 6, 6, 7, 7, 7, 8, 8, 9, 10, 11, 12, 12, 13, 14, 15, 16, 16, 17, 17, 18, 18, 18, 19, 19, 20, 20, 21];
         $oid = (int) DB::table('orders')->max('order_id') + 1;
@@ -262,30 +308,44 @@ class SariSariSeeder extends Seeder
             $day = $start->copy()->addDays($i);
             $prog = $i / max(1, $days);
             $month = (int) $day->month;
-            $dayKey = 'd:' . $day->format('Y-m-d');
+            $dayKey = 'd:'.$day->format('Y-m-d');
 
-            // Who can ring up sales today: people who have joined (inventory cannot sell)
+            // Only people who have joined can ring up sales.
             $pool = [];
             foreach ($staff as $s) {
-                if ($s['joined']->gt($day->copy()->endOfDay())) continue;
-                $w = match ($s['role']) { 'cashier' => 6, 'manager' => 3, 'owner' => 5, default => 0 };
-                for ($k = 0; $k < $w; $k++) $pool[] = $s['id'];
+                if ($s['joined']->gt($day->copy()->endOfDay())) {
+                    continue;
+                }
+                $w = match ($s['role']) {
+                    'cashier' => 6, 'manager' => 3, 'owner' => 5, default => 0
+                };
+                for ($k = 0; $k < $w; $k++) {
+                    $pool[] = $s['id'];
+                }
             }
 
             $dow = (int) $day->dayOfWeekIso;
             $n = 24 + $prog * 20;
             $n *= $dow >= 5 ? 1.15 : ($dow == 1 ? 0.92 : 1);
-            if (in_array($day->day, [15, 30]) || $day->isLastOfMonth()) $n *= 1.3;
-            if ($month === 12) $n *= 1.2;
-            if (mt_rand(1, 100) <= 5) $n *= 0.8; // rainy day
+            if (in_array($day->day, [15, 30]) || $day->isLastOfMonth()) {
+                $n *= 1.3;
+            }
+            if ($month === 12) {
+                $n *= 1.2;
+            }
+            if (mt_rand(1, 100) <= 5) {
+                $n *= 0.8;
+            } // rainy day
             $n = (int) round($n * (0.88 + mt_rand(0, 24) / 100));
 
             $times = [];
             for ($o = 0; $o < $n; $o++) {
                 $t = $day->copy()->setTime($hours[array_rand($hours)], mt_rand(0, 59), mt_rand(0, 59));
-                if ($t->lte($now)) $times[] = $t;
+                if ($t->lte($now)) {
+                    $times[] = $t;
+                }
             }
-            usort($times, fn($a, $b) => $a->timestamp <=> $b->timestamp);
+            usort($times, fn ($a, $b) => $a->timestamp <=> $b->timestamp);
             $seq = 0;
             $recent = $day->diffInDays($today) <= 21;
             $recentMoves = $day->diffInDays($today) <= 60;
@@ -294,25 +354,33 @@ class SariSariSeeder extends Seeder
                 $cancelled = mt_rand(1, 100) === 1;
                 $k = [1, 1, 1, 1, 2, 2, 2, 3, 3, 4][mt_rand(0, 9)];
                 $chosen = [];
-                for ($t = 0; $t < $k * 4 && count($chosen) < $k; $t++) $chosen[$pick($month)] = true;
+                for ($t = 0; $t < $k * 4 && count($chosen) < $k; $t++) {
+                    $chosen[$pick($month)] = true;
+                }
 
-                $lines = []; $sum = 0;
+                $lines = [];
+                $sum = 0;
                 foreach (array_keys($chosen) as $pid) {
                     $price = $priceAt($prod[$pid], $day);
                     $qty = $price < 15 ? [1, 1, 2, 2, 3, 4, 5, 6][mt_rand(0, 7)] : [1, 1, 1, 2, 2, 3][mt_rand(0, 5)];
-                    if (!$cancelled) {
+                    if (! $cancelled) {
                         $qty = min($qty, $prod[$pid]['stock']);
-                        if ($qty <= 0) continue;
+                        if ($qty <= 0) {
+                            continue;
+                        }
                     }
                     $lines[] = [$pid, $qty, $price, round($price * $prod[$pid]['ratio'], 2)];
                     $sum += $price * $qty;
                 }
-                if (!$lines) continue;
+                if (! $lines) {
+                    continue;
+                }
                 $seq++;
 
                 // Cash is common, e-wallets grow over the years
                 $r = mt_rand(1, 100);
-                $gcash = 2 + 28 * $prog; $maya = 1 + 6 * $prog;
+                $gcash = 2 + 28 * $prog;
+                $maya = 1 + 6 * $prog;
                 $method = $r <= $gcash ? 'gcash' : ($r <= $gcash + $maya ? 'maya' : ($r <= $gcash + $maya + 1 ? 'other' : 'cash'));
                 if ($method === 'cash') {
                     $opts = [$sum, ceil($sum / 5) * 5, ceil($sum / 10) * 10, ceil($sum / 20) * 20, ceil($sum / 50) * 50, ceil($sum / 100) * 100];
@@ -330,11 +398,13 @@ class SariSariSeeder extends Seeder
                 ];
                 foreach ($lines as [$pid, $qty, $price, $cost]) {
                     $items[] = ['order_id' => $oid, 'product_id' => $pid, 'quantity' => $qty,
-                                'unit_price' => $price, 'subtotal' => $price * $qty, 'unit_cost' => $cost];
-                    if (!$cancelled) {
+                        'unit_price' => $price, 'subtotal' => $price * $qty, 'unit_cost' => $cost];
+                    if (! $cancelled) {
                         $before = $prod[$pid]['stock'];
                         $prod[$pid]['stock'] -= $qty;
-                        if ($recentMoves) $movement($pid, 'OUT', $qty, "Sale #$seq · " . $when->format('M j'), $when, $uid, $oid, 'order');
+                        if ($recentMoves) {
+                            $movement($pid, 'OUT', $qty, "Sale #$seq · ".$when->format('M j'), $when, $uid, $oid, 'order');
+                        }
                         if ($recent && $before > $prod[$pid]['low'] && $prod[$pid]['stock'] <= $prod[$pid]['low']) {
                             $acts[] = ['store_id' => $sid, 'user_id' => $uid, 'action' => 'lowstock',
                                 'summary' => "{$prod[$pid]['name']} is running low ({$prod[$pid]['stock']} left)", 'created_at' => $when];
@@ -343,17 +413,18 @@ class SariSariSeeder extends Seeder
                 }
                 if ($recent) {
                     $acts[] = ['store_id' => $sid, 'user_id' => $uid, 'action' => 'sale',
-                        'summary' => "Sale #$seq · " . $m($sum) . ' · ' . count($lines) . ' item(s)', 'created_at' => $when];
+                        'summary' => "Sale #$seq · ".$m($sum).' · '.count($lines).' item(s)', 'created_at' => $when];
                     if ($cancelled) {
                         $acts[] = ['store_id' => $sid, 'user_id' => $managerId, 'action' => 'void',
-                            'summary' => "Voided sale #$seq (" . $m($sum) . ')', 'created_at' => $when->copy()->addMinutes(8)];
+                            'summary' => "Voided sale #$seq (".$m($sum).')', 'created_at' => $when->copy()->addMinutes(8)];
                     }
                 }
-                $oid++; $orderCount++;
+                $oid++;
+                $orderCount++;
             }
 
             // End of day: expired or damaged removals, then restocks
-            $keeper = $invJoined->lte($day) ? $invId : $managerId;
+            $keeper = $managerId;
             foreach ($prod as $pid => &$p) {
                 $rate = $p['fresh'] === 1 ? 3 : ($p['fresh'] === 2 ? 0.3 : 0);
                 if ($rate && $p['stock'] > 10 && mt_rand(1, 1000) <= $rate * 10) {
@@ -367,24 +438,51 @@ class SariSariSeeder extends Seeder
                 if ($p['stock'] <= $p['low'] && $day->lt($today)) {
                     $q = $p['target'] - $p['stock'];
                     $p['stock'] += $q;
-                    $movement($pid, 'IN', $q, 'Restock from ' . $supNames[array_rand($supNames)],
-                              $day->copy()->setTime(mt_rand(7, 9), mt_rand(0, 59)), $keeper);
+                    $movement($pid, 'IN', $q, 'Restock from '.$supNames[array_rand($supNames)],
+                        $day->copy()->setTime(mt_rand(7, 9), mt_rand(0, 59)), $keeper);
                 }
             }
             unset($p);
 
-            if (count($orders) >= 1500) $flush();
-            if ($day->month === 12 && $day->day === 31) $this->command->info('Finished ' . $day->year . " ($orderCount sales so far)");
+            if (count($orders) >= 1500) {
+                $flush();
+            }
+            if ($day->month === 12 && $day->day === 31) {
+                $this->command->info('Finished '.$day->year." ($orderCount sales so far)");
+            }
         }
         $flush();
 
         foreach ($prod as $pid => $p) {
-            DB::table('products')->where('product_id', $pid)->update(['stock_quantity' => max(0, $p['stock'])]);
+            $stock = max(0, (int) $p['stock']);
+            DB::table('products')->where('product_id', $pid)->update(['stock_quantity' => $stock]);
+
+            if ($stock === 0) {
+                continue;
+            }
+
+            $batchQuantities = $stock > 1 ? [intdiv($stock, 2), $stock - intdiv($stock, 2)] : [$stock];
+            foreach ($batchQuantities as $index => $quantity) {
+                $expiryDays = match ($p['fresh']) {
+                    1 => $index === 0 ? 14 : 30,
+                    2 => $index === 0 ? 90 : 180,
+                    default => null,
+                };
+                DB::table('stock_batches')->insert([
+                    'store_id' => $sid, 'product_id' => $pid, 'user_id' => $ownerId,
+                    'batch_code' => 'SARI-'.$sid.'-'.$pid.'-'.str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT),
+                    'pack_type' => 'piece', 'qty_received' => $quantity, 'qty_remaining' => $quantity,
+                    'expiry_date' => $expiryDays ? $now->copy()->addDays($expiryDays)->toDateString() : null,
+                    'created_at' => $now,
+                ]);
+            }
         }
 
-        $this->command->info("Done: $orderCount sales and " . count($prod) . ' products over 6 years.');
+        $this->command->info("Done: $orderCount sales and ".count($prod).' products over 6 years.');
         $this->command->info("Store code: $code");
-        $this->command->info('Password for all four accounts: ' . self::PASSWORD);
-        foreach ($staff as $s) $this->command->line("  {$s['role']}: {$s['email']}");
+        $this->command->info('Password for both accounts: '.self::PASSWORD);
+        foreach ($staff as $s) {
+            $this->command->line("  {$s['role']}: {$s['email']}");
+        }
     }
 }

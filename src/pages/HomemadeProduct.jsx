@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { api } from '../services/api'
+import SearchSelect from '../components/SearchSelect'
 import { peso, UNITS, BASE, isMass, unitLabel, r2, nice } from '../utils/format'
 
 const blank = () => ({ name: '', pkg: '', unit: 'g', price: '', used: '', uunit: 'g' })
@@ -80,10 +81,8 @@ export default function HomemadeProduct({ D, run, onDone }) {
       <label>Product name</label>
       <input required value={name} onChange={e => setName(e.target.value)} style={{ width: '100%' }} />
       <label>Category</label>
-      <select value={cat} onChange={e => setCat(e.target.value)} style={{ width: '100%' }}>
-        <option value="">No category</option>
-        {(D.categories || []).map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-      </select>
+      <SearchSelect label="Category" value={cat} onChange={setCat} style={{ width: '100%' }}
+        options={[['', 'No category'], ...(D.categories || []).map(c => [c.name, c.name])]} />
 
       <label style={{ marginTop: 16 }}>Ingredients for one batch</label>
       {rows.map((r, i) => {
@@ -98,18 +97,15 @@ export default function HomemadeProduct({ D, run, onDone }) {
             <label>The pack you bought: size and price</label>
             <div className="bar" style={{ marginBottom: 4 }}>
               <input type="number" min="0" step="any" placeholder="Weight / size of the pack" value={r.pkg} onChange={e => setRow(i, { pkg: e.target.value })} style={{ flex: '1 1 120px' }} />
-              <select value={r.unit} aria-label="Pack unit" onChange={e => setRow(i, { unit: e.target.value, uunit: isMass(e.target.value) === isMass(r.uunit) ? r.uunit : e.target.value })}>
-                {UNITS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-              </select>
+              <SearchSelect className="home-unit" label="Pack unit" value={r.unit} options={UNITS}
+                onChange={value => setRow(i, { unit: value, uunit: isMass(value) === isMass(r.uunit) ? r.uunit : value })} />
               <input type="number" min="0" step="any" placeholder="Price you paid (₱)" value={r.price} onChange={e => setRow(i, { price: e.target.value })} style={{ flex: '1 1 120px' }} />
             </div>
 
             <label>How much you use in one batch</label>
             <div className="bar" style={{ marginBottom: 4 }}>
               <input type="number" min="0" step="any" placeholder="Amount used" value={r.used} onChange={e => setRow(i, { used: e.target.value })} style={{ flex: '1 1 120px' }} />
-              <select value={r.uunit} aria-label="Used unit" onChange={e => setRow(i, { uunit: e.target.value })}>
-                {family(r.unit).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-              </select>
+              <SearchSelect className="home-unit" label="Used unit" value={r.uunit} options={family(r.unit)} onChange={value => setRow(i, { uunit: value })} />
             </div>
 
             {c.ok && <small style={{ color: 'var(--mute)' }}>Cost in this batch: {peso(c.cost)}</small>}

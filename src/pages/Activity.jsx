@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import Empty from '../components/Empty'
+import SearchSelect from '../components/SearchSelect'
 import { PageSkeleton } from '../components/Skeleton'
 import { api } from '../services/api'
 
@@ -40,13 +41,9 @@ export default function Activity({ toast, embedded, setView }) {
       </>}
 
       <div className="bar">
-        <select value={uid} onChange={e => setUid(e.target.value)}>
-          <option value="">Everyone</option>
-          {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-        </select>
-        <select value={type} onChange={e => setType(e.target.value)}>
-          {TYPES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-        </select>
+        <SearchSelect className="bar-select" label="Filter by team member" value={uid} onChange={setUid}
+          options={[['', 'Everyone'], ...members.map(m => [m.id, m.name])]} />
+        <SearchSelect className="bar-select" label="Filter by activity type" value={type} onChange={setType} options={TYPES} />
       </div>
 
       {rows.length ? rows.map(a => (

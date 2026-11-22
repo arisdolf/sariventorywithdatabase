@@ -14,6 +14,8 @@ class ExpenseController extends Controller
         abort_unless($r->user()->hasPerm('costs'), 403, 'Only the owner and managers can manage expenses');
         $sid = $r->user()->store_id;
         abort_unless($sid, 403, 'This account is not part of a store');
+        abort_unless($r->user()->storeVerified(), 403, 'Complete store requirements to access expenses');
+
         return $sid;
     }
 
@@ -30,7 +32,7 @@ class ExpenseController extends Controller
 
     private function m($n): string
     {
-        return '₱' . number_format((float) $n, 2);
+        return '₱'.number_format((float) $n, 2);
     }
 
     // Gross profit of completed sales minus expenses, for any date range
@@ -48,14 +50,14 @@ class ExpenseController extends Controller
         $misc = (float) ($rows['misc'] ?? 0);
 
         return ['gross' => $gross, 'supplies' => $supplies, 'misc' => $misc,
-                'expenses' => $supplies + $misc, 'net' => $gross - $supplies - $misc];
+            'expenses' => $supplies + $misc, 'net' => $gross - $supplies - $misc];
     }
 
     public function index(Request $r)
     {
         $sid = $this->sid($r);
         $month = preg_match('/^\d{4}-\d{2}$/', (string) $r->query('month')) ? $r->query('month') : now()->format('Y-m');
-        $from = Carbon::parse($month . '-01')->startOfMonth();
+        $from = Carbon::parse($month.'-01')->startOfMonth();
         $to = $from->copy()->endOfMonth();
 
         $items = DB::select("SELECT e.expense_id id, e.kind, e.title, e.description, CAST(e.amount AS DOUBLE) amount,
@@ -76,7 +78,8 @@ class ExpenseController extends Controller
             'title' => trim($v['title']), 'description' => $v['description'] ?? null,
             'amount' => $v['amount'], 'spent_on' => $v['spent_on'],
         ]);
-        Activity::log($sid, 'expense', ($v['kind'] === 'misc' ? 'Added misc fee ' : 'Added expense ') . trim($v['title']) . ' (' . $this->m($v['amount']) . ')');
+        Activity::log($sid, 'expense', ($v['kind'] === 'misc' ? 'Added misc fee ' : 'Added expense ').trim($v['title']).' ('.$this->m($v['amount']).')');
+
         return ['ok' => true];
     }
 
@@ -90,7 +93,8 @@ class ExpenseController extends Controller
             'kind' => $v['kind'], 'title' => trim($v['title']), 'description' => $v['description'] ?? null,
             'amount' => $v['amount'], 'spent_on' => $v['spent_on'],
         ]);
-        Activity::log($sid, 'expense', 'Edited expense ' . trim($v['title']) . ' (' . $this->m($v['amount']) . ')');
+        Activity::log($sid, 'expense', 'Edited expense '.trim($v['title']).' ('.$this->m($v['amount']).')');
+
         return ['ok' => true];
     }
 
@@ -102,6 +106,7 @@ class ExpenseController extends Controller
         abort_unless($title, 404, 'Expense not found');
         $q->delete();
         Activity::log($sid, 'expense', "Deleted expense $title");
+
         return ['ok' => true];
     }
 }

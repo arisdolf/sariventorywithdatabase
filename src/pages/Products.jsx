@@ -6,6 +6,7 @@ import HomemadeProduct from './HomemadeProduct'
 import { api } from '../services/api'
 import { peso, UNITS, isMass, unitLabel, BASE, r2, nice } from '../utils/format'
 import { useConfirm } from '../components/Confirm'
+import SearchSelect from '../components/SearchSelect'
 
 const soldText = p => p.sold_by === 'pack' ? `Pack of ${p.pack_qty} pcs`
   : p.sold_by === 'box' ? `Box of ${p.pack_qty} ${p.box_contains === 'pack' ? 'packs' : 'pcs'}` : ''
@@ -112,11 +113,8 @@ export default function Products({ D, run, setModal, user }) {
       {tab === 'home' && costs ? <HomemadeProduct D={D} run={run} onDone={() => setTab('list')} /> : <>
         <div className="bar">
           <input placeholder="Search products" value={q} onChange={e => setQ(e.target.value)} style={{ flex: 1, minWidth: 160 }} />
-          <select value={active} onChange={e => setCat(e.target.value)} aria-label="Filter by category">
-            <option value="">All categories</option>
-            {cats.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-            <option value="__none">No category</option>
-          </select>
+          <SearchSelect className="bar-select" label="Filter by category" value={active} onChange={setCat}
+            options={[['', 'All categories'], ...cats.map(c => [c.name, c.name]), ['__none', 'No category']]} />
           {(D.archived || []).length > 0 && (
             <button className="btn ghost" onClick={() => setShowArch(s => !s)}>Deleted ({D.archived.length})</button>
           )}
@@ -135,7 +133,7 @@ export default function Products({ D, run, setModal, user }) {
             ))}
           </div>
         )}
-        <div className="tw">{list.length ? <table>
+        <div className="tw products-table">{list.length ? <table>
           <thead>
             <tr>
               <th>Name</th><th>Category</th><th>Code</th><th>Size</th>
@@ -147,8 +145,7 @@ export default function Products({ D, run, setModal, user }) {
           </thead>
           <tbody>
             {list.map(p => <tr key={p.id}>
-              {p.is_repacked ? <> <span className="pill">Repacked</span></> : null}
-              <td className="main"><div>{p.name}{p.is_homemade ? <> <span className="pill">Homemade</span></> : null}
+              <td className="main"><div>{p.name}{p.is_repacked && <> <span className="pill">Repacked</span></>}{p.is_homemade && <> <span className="pill">Homemade</span></>}
                 {soldText(p) && <div style={{ fontWeight: 400, fontSize: 13, color: 'var(--mute)' }}>{soldText(p)}</div>}
                 {p.description && <div style={{ fontWeight: 400, fontSize: 13, color: 'var(--mute)' }}>{p.description}</div>}
               </div></td>
@@ -160,8 +157,8 @@ export default function Products({ D, run, setModal, user }) {
               {costs && <td data-label="Profit / item">{peso(p.price - (p.cost_price ?? 0))}</td>}
               <td data-label="Stock">{p.qty}</td>
               <td data-label="Status"><StatusPill p={p} /></td>
-              <td className="act"><button className="btn ghost sm" onClick={() => form(p)}>Edit</button>{' '}
-                <button className="btn ghost sm" onClick={() => remove(p)}>Delete</button></td></tr>)}
+              <td className="act"><div className="product-actions"><button className="btn ghost sm" onClick={() => form(p)}>Edit</button>
+                <button className="btn ghost sm" onClick={() => remove(p)}>Delete</button></div></td></tr>)}
           </tbody></table> : <Empty>No products found. Try another search or add a product.</Empty>}</div>
       </>}
     </>

@@ -1,14 +1,16 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\StoreController as S;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\TeamController as T;
-use App\Http\Controllers\ProfileController as P;
-use App\Http\Controllers\AnalyticsController as A;
-use App\Http\Controllers\SettingsController as Se;
 use App\Http\Controllers\ActivityController as Ac;
+use App\Http\Controllers\AnalyticsController as A;
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ExpenseController as E;
+use App\Http\Controllers\ProfileController as P;
+use App\Http\Controllers\SettingsController as Se;
+use App\Http\Controllers\StoreController as S;
+use App\Http\Controllers\StoreVerificationController as V;
+use App\Http\Controllers\TeamController as T;
+use Illuminate\Support\Facades\Route;
+
 // Public: no token needed
 
 Route::post('/forgot-password', [AuthController::class, 'forgot'])
@@ -32,13 +34,14 @@ Route::post('/verify-email', [AuthController::class, 'verify'])
 Route::post('/resend-code', [AuthController::class, 'resend'])
     ->middleware('throttle:5,1');
 
-
 // Private: needs a logged-in token
 
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/data', [S::class, 'data']);
+    Route::get('/store/verification', [V::class, 'show']);
+    Route::post('/store/verification/documents', [V::class, 'upload']);
 
     Route::post('/products', [S::class, 'storeProduct']);
     Route::put('/products/{id}', [S::class, 'updateProduct']);
@@ -78,9 +81,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/team/{id}/reactivate', [T::class, 'reactivate']);
 
     Route::get('/expenses', [E::class, 'index']);
-Route::post('/expenses', [E::class, 'store']);
-Route::put('/expenses/{id}', [E::class, 'update']);
-Route::delete('/expenses/{id}', [E::class, 'destroy']);
+    Route::post('/expenses', [E::class, 'store']);
+    Route::put('/expenses/{id}', [E::class, 'update']);
+    Route::delete('/expenses/{id}', [E::class, 'destroy']);
 
     Route::get('/profile', [P::class, 'show']);
     Route::put('/profile', [P::class, 'update']);

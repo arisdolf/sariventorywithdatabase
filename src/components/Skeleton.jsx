@@ -115,12 +115,20 @@ inv: () => <><Head /><Bar buttons={2} /><Table cols={5} rows={6} /></>,
     <Head />
     <div className="bar"><Sk w={220} h={40} /><Sk w={110} h={40} /><Sk w={110} h={40} /></div>
     <Stats n={4} />
-    <div className="an-chart" aria-hidden>
-      {HEIGHTS.map((h, i) => (
-        <div className="an-col" key={i}>
-          <div className="an-plot"><Sk w="100%" h={h + '%'} r={6} style={{ maxWidth: 36 }} /></div>
-        </div>
-      ))}
+    <div className="an-line-chart" aria-hidden="true">
+      <div className="an-line-y-axis">{[0, 1, 2, 3, 4].map(i => <Sk key={i} w={44} h={10} r={4} />)}</div>
+      <svg className="an-line-svg" viewBox="0 0 1000 230" preserveAspectRatio="none">
+        {[8, 61.5, 115, 168.5, 222].map(y => <line key={y} className="an-line-grid" x1="0" x2="1000" y1={y} y2={y} />)}
+        <path className="an-line-skeleton-path" d="M 12 178 L 172 143 L 332 158 L 492 88 L 652 116 L 812 52 L 988 96" />
+      </svg>
+      <div className="an-line-x-spacer" />
+      <div className="an-line-x-axis">
+        {[12, 250, 500, 750, 988].map((x, i) => (
+          <span key={x} className={`an-line-x-label${i === 0 ? ' is-first' : ''}${i === 4 ? ' is-last' : ''}${i % 2 === 1 ? ' hide-mobile' : ''}`} style={{ left: `${x / 10}%` }}>
+            <Sk w={48} h={10} r={4} />
+          </span>
+        ))}
+      </div>
     </div>
     <Table cols={4} rows={4} />
   </>,

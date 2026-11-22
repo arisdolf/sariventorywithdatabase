@@ -1,45 +1,130 @@
-/* ===== Page shell, grids, stat tiles, mobile top bar ===== */
-
+/* Shared application shell and page grids */
 main {
   flex: 1;
-  padding: 28px 32px;
-  max-width: 1100px;
+  width: min(100%, 1280px);
   min-width: 0;
+  margin: 0 auto;
+  padding: 34px clamp(24px, 4vw, 56px);
 }
-
+.page { width: 100%; max-width: 1120px; margin: 0 auto }
 .stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
   gap: 14px;
-  margin-bottom: 24px;
+  margin: 0 0 22px;
 }
-.stat { border: 1px solid var(--line); border-radius: 10px; padding: 16px }
-.stat b { font-size: 26px; display: block }
-.stat small { color: var(--mute) }
-
-.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px }
-
-.bar { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap }
-.row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px }
-.tot { font-size: 20px; font-weight: 700; margin: 12px 0 }
-
-/* Mobile top bar (hidden on desktop) */
+.stat {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+.stat b { display: block; margin-bottom: 4px; font-size: clamp(20px, 2vw, 27px); line-height: 1.2; letter-spacing: -.035em; overflow-wrap: anywhere }
+.stat small { color: var(--mute); font-size: 13px }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px }
+.bar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap }
+.row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px }
+.tot { margin: 12px 0; font-size: 20px; font-weight: 700 }
 .top { display: none }
 
+.dash-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 26px }
+.dash-head .sub { margin-bottom: 0 }
+.dash-head > .btn { flex: none }
+.dash-kicker { display: block; margin-bottom: 7px; color: var(--acc); font-size: 11px; font-weight: 750; letter-spacing: .13em }
+.dash-section { margin-bottom: 24px }
+.dash-section-title { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px }
+.dash-section-title h2 { margin: 0; font-size: 17px; letter-spacing: -.02em }
+.dash-section-title > span { color: var(--mute); font-size: 13px }
+.dash-section .stats { margin-bottom: 0 }
+.dash-section .stat { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left }
+.dash-section .stat small { order: 0; font-size: 12px; font-weight: 600 }
+.dash-section .stat b { order: 1; margin: 4px 0 0; font-variant-numeric: tabular-nums }
+.dash-section .stat > span { order: 2; color: var(--mute); font-size: 12px }
+.dash-section .stat-primary { border-color: color-mix(in srgb, var(--acc) 30%, var(--line)); background: var(--accbg) }
+.dash-section .stat-primary b { color: var(--acc) }
+.stat-action { width: 100%; border: 1px solid var(--line); color: var(--text); font: inherit; cursor: pointer }
+.stat-action:hover { border-color: var(--acc) }
+.stat-action.needs-attention { border-color: color-mix(in srgb, var(--warn) 40%, var(--line)); background: color-mix(in srgb, var(--warnbg) 55%, var(--surface)) }
+.dash-section .stat b.negative { color: var(--bad) }
+.dash-lists { margin-top: 6px }
+.dash-list { min-width: 0; padding: 0; overflow: hidden }
+.dash-list-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 18px 18px 13px; border-bottom: 1px solid var(--line) }
+.dash-list-head h2 { margin: 0; font-size: 16px }
+.dash-list-head p { margin: 3px 0 0; color: var(--mute); font-size: 12px }
+.dash-list-head .link { white-space: nowrap }
+.dash-rows { padding: 0 18px }
+.dash-row { display: flex; align-items: center; gap: 11px; min-height: 62px; border-bottom: 1px solid var(--line) }
+.dash-row:last-child { border-bottom: 0 }
+.dash-item-icon { display: grid; width: 34px; height: 34px; flex: none; place-items: center; border-radius: 10px; background: var(--accbg); color: var(--acc); font-size: 13px; font-weight: 700 }
+.dash-sale-icon { font-size: 18px }
+.dash-row-name { display: grid; flex: 1; gap: 2px; min-width: 0; font-size: 13px; font-weight: 650 }
+.dash-row-name small { color: var(--mute); font-size: 11px; font-weight: 450 }
+.dash-qty { color: var(--warn); font-size: 12px; font-weight: 650; white-space: nowrap }
+.dash-amount { font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap }
+.dash-list > .empty { padding: 26px 18px }
+.dash-setup-banner {
+  display: flex; align-items: center; gap: 14px; width: 100%; margin: -8px 0 24px; padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--acc) 30%, var(--line)); border-radius: 14px;
+  background: linear-gradient(110deg, var(--accbg), var(--surface)); color: var(--text); text-align: left; cursor: pointer;
+  transition: border-color .18s, box-shadow .18s, transform .18s;
+}
+.dash-setup-banner:hover { border-color: var(--acc); box-shadow: var(--shadow-sm); transform: translateY(-1px) }
+.dash-setup-mark, .dash-locked-icon { display: grid; flex: none; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: var(--surface); color: var(--acc) }
+.dash-setup-mark svg, .dash-locked-icon svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round }
+.dash-setup-banner > span:nth-child(2) { display: grid; flex: 1; gap: 3px; min-width: 0 }
+.dash-setup-banner b { font-size: 14px }
+.dash-setup-banner small { color: var(--mute); font-size: 13px; line-height: 1.45 }
+.dash-setup-action { flex: none; color: var(--acc); font-size: 13px; font-weight: 750 }
+.dash-locked-section { margin-top: 30px }
+.dash-locked-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px }
+.dash-locked-tool {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-width: 0; min-height: 86px; padding: 14px;
+  border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); color: var(--text);
+  box-shadow: var(--shadow-sm); text-align: left; font: inherit; cursor: pointer;
+  transition: border-color .18s, background .18s, transform .18s;
+}
+.dash-locked-tool:hover { border-color: color-mix(in srgb, var(--acc) 45%, var(--line)); background: var(--panel); transform: translateY(-1px) }
+.dash-locked-icon { width: 38px; height: 38px; border-radius: 11px; background: var(--accbg) }
+.dash-locked-icon svg { width: 19px; height: 19px }
+.dash-locked-copy { display: grid; flex: 1; gap: 3px; min-width: 0 }
+.dash-locked-copy b { font-size: 14px }
+.dash-locked-copy small { color: var(--mute); font-size: 12px; line-height: 1.4 }
+.dash-locked-cta { flex: none; color: var(--acc); font-size: 12px; font-weight: 750; text-align: right }
+.dash-locked-link { color: var(--acc) }
+.dash-setup-banner:focus-visible, .dash-locked-tool:focus-visible { outline: 2px solid var(--acc); outline-offset: 3px }
+
+@media (max-width: 900px) {
+  main { padding-inline: 24px }
+}
 @media (max-width: 760px) {
-  main { padding: 16px 16px calc(84px + env(safe-area-inset-bottom, 0px)) }
-
- 
-  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px }
-.stat { padding: 12px; min-width: 0 }
-.stat b { font-size: clamp(16px, 5.2vw, 21px); overflow-wrap: anywhere }
-  .grid2 { grid-template-columns: 1fr }
-
+  main { padding: 24px 16px calc(104px + env(safe-area-inset-bottom, 0px)) }
+  .page { max-width: none }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px }
+  .stat { padding: 14px; border-radius: 13px }
+  .stat b { font-size: clamp(18px, 5vw, 23px) }
+  .grid2 { grid-template-columns: minmax(0, 1fr); gap: 12px }
+  .bar { gap: 8px }
   .bar .btn { flex: 1 1 auto }
   .bar select { flex: 1 1 100% !important }
   .bar input[type=number] { flex: 0 0 90px }
   .tot + .btn { width: 100% }
+  .dash-head { margin-bottom: 22px }
+  .dash-head > .btn { min-height: 46px }
+  .dash-section { margin-bottom: 22px }
+  .dash-section-title { gap: 7px; flex-wrap: wrap }
+  .dash-section-title > span { font-size: 12px }
+  .dash-section .stats { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  .dash-lists { gap: 12px }
+  .dash-locked-grid { grid-template-columns: minmax(0, 1fr) }
+  .dash-setup-banner { align-items: flex-start; flex-wrap: wrap; margin-top: -4px }
+  .dash-setup-mark { width: 38px; height: 38px }
+  .dash-setup-action { margin-left: 52px }
 }
-
-.stat { min-width: 0 }
-.stat b { overflow-wrap: anywhere }
+@media (max-width: 420px) {
+  .dash-head { flex-direction: column }
+  .dash-head > .btn { width: 100% }
+  .dash-list-head { align-items: flex-start; padding-inline: 14px }
+  .dash-rows { padding-inline: 14px }
+}

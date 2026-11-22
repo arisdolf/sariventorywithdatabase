@@ -3,17 +3,34 @@ import { api } from '../services/api'
 
 export default function StockMovements({ D, run, setModal }) {
   const pname = id => D.products.find(p => p.id === id)?.name || 'Deleted product'
-  const opts = D.products.map(p => [p.id, p.name + (p.code ? ' · ' + p.code : '') + ' (' + p.qty + ' left)'])
+  const batches = (D.batches || []).filter(b => b.qty > 0).map(batch => {
+    const product = D.products.find(p => p.id === batch.pid)
+    if (!product) return null
+    const productCode = product.code ? ` | Barcode ${product.code}` : ''
+    const expiry = batch.expiry
+      ? `Expires ${new Date(batch.expiry + 'T00:00').toLocaleDateString('en-PH', { dateStyle: 'medium' })}`
+      : 'No expiry date'
+    return { batch, product, label: `${product.name}${productCode} | Batch ${batch.code || 'No code'} | ${expiry} | ${batch.qty} left` }
+  }).filter(Boolean)
 
   const removeStock = () => setModal({
     title: 'Remove stock',
     fields: [
-      { n: 'pid', l: 'Product', opts, search: 1, ph: 'Search product…' },
-      { n: 'qty', l: 'Quantity to remove', t: 'number', v: 1, req: 1 },
+      { n: 'batch_id', l: 'Product and batch', opts: batches.map(({ batch, label }) => [batch.id, label]), search: 1, searchToOpen: 1, ph: 'Search product, barcode or batch code…' },
+      { n: 'qty', l: v => {
+        const selected = batches.find(({ batch }) => batch.id === +v.batch_id)?.batch
+        return selected ? `Pieces to remove (max ${selected.qty})` : 'Pieces to remove'
+      }, t: 'number', v: 1, min: 1, max: v => batches.find(({ batch }) => batch.id === +v.batch_id)?.batch.qty, step: 1, req: 1 },
       { n: 'reason', l: 'Reason', opts: [['expired', 'Expired'], ['damaged', 'Damaged'], ['lost', 'Lost'], ['other', 'Other']] },
       { n: 'rem', l: 'Remarks (optional)' },
     ],
-    save: v => run(() => api('/stock/remove', 'POST', { product_id: +v.pid, qty: +v.qty, reason: v.reason, remarks: v.rem }), 'Stock removed'),
+    save: v => {
+      const selected = batches.find(({ batch }) => batch.id === +v.batch_id)
+      if (!selected) return
+      return run(() => api('/stock/remove', 'POST', {
+        product_id: selected.product.id, batch_id: selected.batch.id, qty: +v.qty, reason: v.reason, remarks: v.rem,
+      }), 'Stock removed')
+    },
   })
 
   return (

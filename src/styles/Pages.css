@@ -27,12 +27,12 @@
 .auth-note.warn .link { color: var(--warn); text-decoration: underline }
 .auth-switch { text-align: center; margin: 16px 0 0; color: var(--mute); font-size: 14px }
 
-.link { background: none; border: 0; padding: 0; color: var(--acc); font: 600 14px Figtree, sans-serif; cursor: pointer }
+.link { background: none; border: 0; padding: 0; color: var(--acc); font: 600 14px "Nunito Sans", sans-serif; cursor: pointer }
 .link:hover { text-decoration: underline }
 
 /* Two-way toggle */
 .seg { display: flex; gap: 4px; padding: 4px; margin: 6px 0 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px }
-.seg button { flex: 1; border: 0; background: none; color: var(--mute); font: 600 14px Figtree, sans-serif; padding: 9px 6px; border-radius: 7px; cursor: pointer }
+.seg button { flex: 1; border: 0; background: none; color: var(--mute); font: 600 14px "Nunito Sans", sans-serif; padding: 9px 6px; border-radius: 7px; cursor: pointer }
 .seg button.on { background: var(--bg); color: var(--acc); box-shadow: 0 1px 3px rgba(0, 0, 0, .12) }
 
 
@@ -74,3 +74,106 @@
 .terms { background: var(--bg); width: min(480px, 92vw); max-height: 85vh; display: flex; flex-direction: column }
 .terms-body { overflow: auto; font-size: 14px }
 .terms-body p { margin: 0 0 10px }
+
+/* Authentication */
+.login-wrap { position: relative; min-height: 100dvh; align-items: center; padding: 32px 18px; background: var(--panel) }
+.login { width: min(440px, 100%); padding: clamp(24px, 5vw, 36px); border-color: var(--line); border-radius: 20px; background: var(--surface); box-shadow: var(--shadow-md) }
+.login .logo { padding: 0 !important; margin-bottom: 28px; font-size: 22px }
+.login .auth-title { margin: 0 0 6px; font-size: 25px; line-height: 1.2; letter-spacing: -.04em }
+.login > .sub { margin-bottom: 22px !important; line-height: 1.55 }
+.login form > label:not(.check) { margin-top: 16px; margin-bottom: 6px }
+.login form input:not([type="checkbox"]), .login form select { width: 100% }
+.login .auth-back { min-height: 40px; margin: -8px 0 15px; display: inline-flex; align-items: center; gap: 7px; color: var(--mute) }
+.login .auth-tabs { position: relative; isolation: isolate; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 0 0 22px; padding: 4px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel) }
+.login .auth-tabs::before { position: absolute; z-index: 0; inset: 4px auto 4px 4px; width: calc((100% - 12px) / 2); border-radius: 8px; background: var(--surface); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); content: ""; transition: transform .24s cubic-bezier(.2, .75, .25, 1) }
+.login .auth-tabs.is-signup::before { transform: translateX(calc(100% + 4px)) }
+.login .auth-tabs button { position: relative; z-index: 1; min-height: 44px; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--mute); font: 650 14px "Nunito Sans", sans-serif; cursor: pointer; transition: color .18s ease }
+.login .auth-tabs button.active { color: var(--acc) }
+.login .auth-tabs button:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px }
+.login .auth-content { animation: auth-view-enter .22s ease-out both }
+.login .auth-kind-toggle { position: relative; isolation: isolate; margin: 8px 0 16px !important }
+.login .auth-kind-toggle::before { position: absolute; z-index: 0; inset: 4px auto 4px 4px; width: calc((100% - 12px) / 2); border-radius: 7px; background: var(--bg); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); content: ""; transition: transform .24s cubic-bezier(.2, .75, .25, 1) }
+.login .auth-kind-toggle.is-join::before { transform: translateX(calc(100% + 4px)) }
+.login .auth-kind-toggle button { position: relative; z-index: 1; background: transparent; box-shadow: none; transition: color .18s ease }
+.login .auth-kind-toggle button.on { color: var(--acc) }
+.login .auth-kind-fields { animation: auth-view-enter .2s ease-out both }
+.login .auth-business-select, .login .auth-business-select input { width: 100%; min-width: 0; max-width: 100% }
+.login .auth-password-field { position: relative; display: block; width: 100%; min-width: 0; max-width: 100% }
+.login .auth-password-field input { width: 100%; min-width: 0; max-width: 100%; padding-right: 68px }
+.login .auth-password-toggle { position: absolute; top: 50%; right: 4px; min-width: 44px; min-height: 44px; transform: translateY(-50%); border: 0; border-radius: 7px; background: transparent; color: var(--acc); font: 650 12px "Nunito Sans", sans-serif; cursor: pointer }
+.login .auth-password-toggle:hover { background: var(--accbg) }
+.login .auth-password-toggle:focus-visible { outline: 2px solid var(--acc); outline-offset: -2px }
+@keyframes auth-view-enter { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: translateY(0) } }
+.login .auth-grid { gap: 12px }
+.login .auth-note { border: 1px solid color-mix(in srgb, var(--acc) 18%, var(--line)); border-radius: 10px; line-height: 1.5 }
+.login .auth-err { padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--bad) 28%, var(--line)); border-radius: 10px; background: var(--badbg); line-height: 1.45 }
+.login .seg { margin: 8px 0 16px !important }
+.login .seg button { min-height: 42px }
+.login .check { align-items: flex-start; gap: 9px; line-height: 1.5 }
+.login .check input { width: 18px; height: 18px; min-height: 18px }
+
+/* Store verification */
+.store-verification { width: min(820px, 100%); min-width: 0; margin: 0 auto; padding: clamp(18px, 4vw, 34px) 0 48px; scroll-margin-top: 24px }
+.store-verification-header { margin-bottom: 22px }
+.store-verification-kicker { color: var(--acc); font-size: 12px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase }
+.store-verification-header h1, .store-access-notice h1 { margin: 8px 0; font-size: clamp(26px, 4vw, 34px) }
+.store-verification-header > p { margin: 0; color: var(--mute); text-transform: capitalize }
+.store-verification-progress { padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface) }
+.store-verification-progress-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px }
+.store-verification-progress-heading span { color: var(--mute); font-size: 14px; font-variant-numeric: tabular-nums }
+.store-verification-progress-track { height: 8px; margin: 12px 0 10px; overflow: hidden; border-radius: 99px; background: var(--line) }
+.store-verification-progress-track > span { display: block; width: 100%; height: 100%; transform-origin: left; border-radius: inherit; background: var(--acc); transition: transform .3s ease }
+.store-verification-progress > p { margin: 0; color: var(--mute); font-size: 14px; line-height: 1.55 }
+.store-verification-auto-note { margin: 14px 0 24px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--warn) 28%, var(--line)); border-radius: 10px; background: var(--warnbg); color: var(--text); font-size: 13px; line-height: 1.55 }
+.store-verification-auto-note strong { color: var(--warn) }
+.store-verification-section { margin-top: 24px }
+.store-verification-section-heading { margin-bottom: 12px }
+.store-verification-section-heading h2 { margin: 0 0 4px; font-size: 19px }
+.store-verification-section-heading p { margin: 0; color: var(--mute); font-size: 14px }
+.store-document-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px }
+.store-document-card { min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface) }
+.store-document-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px }
+.store-document-heading h3 { margin: 0; font-size: 15px }
+.store-document-heading p { margin: 5px 0 0; color: var(--mute); font-size: 13px; line-height: 1.5 }
+.store-document-status { flex: none; padding: 4px 8px; border-radius: 99px; background: var(--panel); color: var(--mute); font-size: 11px; font-weight: 700 }
+.store-document-status.complete { background: var(--accbg); color: var(--acc) }
+.store-document-file { margin: 10px 0 0; color: var(--acc); font-size: 12px; overflow-wrap: anywhere }
+.store-document-upload {
+  position: relative; display: flex; align-items: center; gap: 12px; min-width: 0; min-height: 64px; margin-top: 14px; padding: 10px 12px;
+  overflow: hidden; border: 1px solid color-mix(in srgb, var(--acc) 28%, var(--line)); border-radius: 12px;
+  background: linear-gradient(110deg, color-mix(in srgb, var(--accbg) 62%, var(--surface)), var(--surface)); color: var(--text); cursor: pointer;
+  transition: border-color .18s, background .18s, transform .18s, box-shadow .18s;
+}
+.store-document-upload:hover { border-color: var(--acc); background: var(--accbg); box-shadow: var(--shadow-sm); transform: translateY(-1px) }
+.store-document-upload:focus-within { outline: 2px solid var(--acc); outline-offset: 3px }
+.store-document-upload.is-disabled { opacity: .58; cursor: not-allowed; transform: none; box-shadow: none }
+.store-document-upload-icon { display: grid; flex: none; place-items: center; width: 40px; height: 40px; border-radius: 11px; background: var(--surface); color: var(--acc) }
+.store-document-upload-icon svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round }
+.store-document-upload-copy { display: grid; flex: 1; gap: 2px; min-width: 0 }
+.store-document-upload-copy b { font-size: 13px }
+.store-document-upload-copy small { color: var(--mute); font-size: 11px; line-height: 1.35 }
+.store-document-upload-action { flex: none; padding: 8px 11px; border: 1px solid color-mix(in srgb, var(--acc) 20%, var(--line)); border-radius: 9px; background: var(--surface); color: var(--acc); font-size: 12px; font-weight: 750 }
+.store-document-file-input { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; border-radius: inherit; opacity: 0; cursor: pointer }
+.store-document-file-input:disabled { cursor: not-allowed }
+.store-verification-error-message, .store-verification-error { padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--bad) 28%, var(--line)); border-radius: 10px; background: var(--badbg); color: var(--bad) }
+.store-verification-error { max-width: 680px; margin: 24px auto; background: var(--surface) }
+.store-verification-error h1 { margin-top: 0; color: var(--text); font-size: 22px }
+.store-verification-loading { padding: 32px 0; color: var(--mute) }
+#store-requirements { scroll-margin-top: 24px }
+.store-access-notice { width: min(680px, 100%); margin: 36px auto; padding: clamp(20px, 4vw, 32px); border: 1px solid var(--line); border-radius: 16px; background: var(--surface) }
+.store-access-notice p { max-width: 540px; margin: 8px 0 20px; color: var(--mute); line-height: 1.6 }
+.store-access-notice .btn { min-height: 44px }
+.store-verification-error-message { margin: 16px 0; font-size: 14px }
+.store-verification-continue { min-height: 48px; margin-top: 24px; padding-inline: 20px }
+
+@media (max-width: 600px) {
+  .store-verification { padding-top: 10px; scroll-margin-top: 80px }
+  #store-requirements { scroll-margin-top: 80px }
+  .store-document-list { grid-template-columns: 1fr }
+  .store-document-heading { flex-wrap: wrap }
+}
+
+@media (max-width: 760px) {
+  .login-wrap { min-height: 100dvh; align-items: start; padding: 18px 14px calc(18px + env(safe-area-inset-bottom, 0px)) }
+  .login { margin: auto 0; border-radius: 17px }
+}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import Empty from '../components/Empty'
+import SearchSelect from '../components/SearchSelect'
 import { api } from '../services/api'
 import { PageSkeleton } from '../components/Skeleton'
 import { useConfirm } from '../components/Confirm'
@@ -86,9 +87,8 @@ if (!t) return <PageSkeleton page="team" />
                 <td data-label="Role">
                   {fixed
                     ? (m.role === 'owner' ? 'Owner' : m.role)
-                    : <select value={m.role} onChange={e => act(() => api('/team/' + m.id, 'PUT', { role: e.target.value }), 'Role updated')}>
-                        {t.roles.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
-                      </select>}
+                    : <SearchSelect label={'Role for ' + m.name} value={m.role} options={t.roles.map(r => [r.key, r.label])}
+                        onChange={value => act(() => api('/team/' + m.id, 'PUT', { role: value }), 'Role updated')} />}
                 </td>
                 <td className="act">{!fixed && <>
   {m.status === 'suspended'

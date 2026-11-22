@@ -21,12 +21,12 @@ input:focus, select:focus, button:focus-visible { outline: 2px solid var(--acc);
   border: 0;
   border-radius: 8px;
   padding: 9px 16px;
-  font: 600 14px Figtree, sans-serif;
+  font: 600 14px "Nunito Sans", sans-serif;
   cursor: pointer;
 }
 .btn.ghost { background: none; color: var(--text); border: 1px solid var(--line) }
 .btn.sm { padding: 5px 10px; font-size: 13px }
-.btn:disabled { opacity: .5; cursor: not-allowed }
+.btn:disabled { opacity: .55; cursor: not-allowed }
 
 /* --- Cards, pills, empty state --- */
 .card { border: 1px solid var(--line); border-radius: 10px; padding: 16px }
@@ -46,9 +46,9 @@ input:focus, select:focus, button:focus-visible { outline: 2px solid var(--acc);
 .empty { color: var(--mute); padding: 18px; text-align: center }
 
 /* --- Tables (become cards on mobile) --- */
-.tw { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px }
+.tw { min-width: 0; max-width: 100%; overflow-x: hidden; border: 1px solid var(--line); border-radius: 10px }
 table { width: 100%; border-collapse: collapse }
-th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); white-space: nowrap }
+th, td { min-width: 0; text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); white-space: normal; overflow-wrap: anywhere }
 th { background: var(--panel); font-weight: 600; color: var(--mute); font-size: 13px }
 tr:last-child td { border: 0 }
 
@@ -126,7 +126,11 @@ body:has(.ov) { overflow: hidden }
   min-height: 46px;
 }
 .opts button:hover, .opts button:focus-visible { background: var(--accbg) }
-.opts small { color: var(--mute); white-space: nowrap }
+.opts button[aria-selected="true"] { background: var(--accbg); color: var(--acc); font-weight: 650 }
+.opts small { color: var(--mute); white-space: normal; overflow-wrap: anywhere; text-align: right }
+.sale-option-copy { display: flex; flex: 1 1 auto; flex-direction: column; align-items: flex-start; min-width: 0; gap: 2px }
+.sale-option-copy small, .sale-barcode { color: var(--mute); font-size: 12px; font-weight: 400; text-align: left }
+.sale-barcode { display: block; margin-top: 3px }
 .none { padding: 12px; color: var(--mute); text-align: center }
 
 /* Search dropdown that floats above the modal and fits the screen */
@@ -189,7 +193,7 @@ body:has(.ov) { overflow: hidden }
 
 .btn:disabled { opacity: .5; cursor: not-allowed }
 
-.btn { white-space: nowrap }
+.btn { min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere }
 
 /* Skeleton tables */
 .sk-tbl { border: 1px solid var(--line); border-radius: 10px; overflow: hidden }
@@ -200,20 +204,32 @@ body:has(.ov) { overflow: hidden }
 
 /* Analytics chart */
  
-.an-chart { display: flex; align-items: stretch; gap: 4px; height: 240px; padding: 14px 30px 0; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 14px; overflow-x: auto; overflow-y: hidden; max-width: 100%; -webkit-overflow-scrolling: touch }
-.an-col { flex: 1 0 32px; min-width: 32px; display: flex; flex-direction: column; align-items: center; gap: 4px }
+.an-chart { display: flex; align-items: stretch; gap: 4px; height: 240px; min-width: 0; padding: 14px 18px 0; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 14px; overflow: hidden; max-width: 100% }
+.an-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 4px }
 .an-plot { flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center }
 .an-bar { width: 100%; max-width: 36px; min-height: 2px; background: var(--acc); border-radius: 4px 4px 0 0 }
 .an-col small { width: 0; display: flex; justify-content: center; color: var(--mute); font-size: 11px; white-space: nowrap; padding-bottom: 6px; min-height: 22px }
+.an-line-chart { display: grid; grid-template-columns: 76px minmax(0, 1fr); grid-template-rows: 220px 24px; min-width: 0; max-width: 100%; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 14px; padding: 10px 14px 8px 8px; overflow: hidden }
+.an-line-y-axis { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; justify-content: space-between; min-width: 0; padding: 0 8px 0 0; color: var(--mute); font-size: 11px; line-height: 1; text-align: right }
+.an-line-svg { grid-column: 2; grid-row: 1; display: block; width: 100%; height: 100%; overflow: visible }
+.an-line-grid { stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 5; vector-effect: non-scaling-stroke }
+.an-line-skeleton-path { fill: none; stroke: var(--line); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke }
+.an-line-path { fill: none; stroke: var(--acc); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; stroke-dasharray: 1; stroke-dashoffset: 1; animation: an-line-draw .85s cubic-bezier(.2, .8, .2, 1) forwards }
+.an-line-point { fill: var(--panel); stroke: var(--acc); stroke-width: 2.5; vector-effect: non-scaling-stroke; transform-box: fill-box; transform-origin: center; animation: an-line-pop .25s ease-out backwards }
+.an-line-x-spacer { grid-column: 1; grid-row: 2 }
+.an-line-x-axis { position: relative; grid-column: 2; grid-row: 2; min-width: 0; color: var(--mute); font-size: 11px; line-height: 1.2 }
+.an-line-x-label { position: absolute; top: 4px; max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; transform: translateX(-50%) }
+.an-line-x-label.is-first { transform: none; text-align: left }
+.an-line-x-label.is-last { transform: translateX(-100%); text-align: right }
 
 /* Long tables scroll inside their own box */
 .tw.scroll { max-height: 420px; overflow-y: auto }
 .tw.scroll thead th { position: sticky; top: 0; z-index: 1 }
 
 /* Tables that wrap their text instead of scrolling sideways */
-.tw.wrap { overflow-x: visible }
+.tw.wrap { overflow-x: hidden }
 .tw.wrap th, .tw.wrap td { white-space: normal; overflow-wrap: anywhere }
-.tw.wrap td.act { white-space: nowrap }
+.tw.wrap td.act { white-space: normal }
 
 @media (max-width: 760px) {
   .sk-tbl { border: 0; overflow: visible }
@@ -241,8 +257,8 @@ body:has(.ov) { overflow: hidden }
 .opt.on { border-color: var(--acc); background: var(--accbg) }
 .opt input { width: auto; min-height: 0; margin-top: 5px }
 
-.seg.scroll { overflow-x: auto }
-.seg.scroll button { white-space: nowrap }
+.seg.scroll { overflow: visible; flex-wrap: wrap; max-width: 100% }
+.seg.scroll button { min-width: 0; white-space: normal; overflow-wrap: anywhere }
 
 /* Settings sections */
 .set-sec { margin-bottom: 36px }
@@ -255,6 +271,10 @@ body:has(.ov) { overflow: hidden }
 .go small { color: var(--mute) }
 .go:hover { border-color: var(--acc); background: var(--panel) }
 .go .chev { font-size: 24px; color: var(--mute); flex: none }
+.go.go-locked { border-color: color-mix(in srgb, var(--acc) 25%, var(--line)); background: color-mix(in srgb, var(--accbg) 55%, var(--surface)) }
+.go.go-locked:hover { border-color: var(--acc) }
+.go .go-lock-note { display: block; margin-top: 5px; color: var(--acc); font-weight: 650 }
+.go-lock-state { flex: none; padding: 6px 9px; border: 1px solid color-mix(in srgb, var(--acc) 22%, var(--line)); border-radius: 99px; background: var(--surface); color: var(--acc); font-size: 11px; font-weight: 750 }
 
 /* Confirm modal */
 .ov.cf-ov { z-index: 8; place-items: center; padding: 16px }
@@ -273,7 +293,7 @@ body:has(.ov) { overflow: hidden }
   padding: 9px 10px;
   border: 1px solid var(--line); border-radius: 10px;
   background: var(--panel); color: var(--mute);
-  font: 600 14px Figtree, sans-serif;
+  font: 600 14px "Nunito Sans", sans-serif;
   white-space: nowrap; cursor: pointer;
 }
 .mtabs button svg { flex: none }
@@ -287,4 +307,105 @@ body:has(.ov) { overflow: hidden }
 /* Amount + unit on one row */
 .amt { display: flex; gap: 8px }
 dialog .amt input { flex: 1 1 0; width: auto }
-dialog .amt select { flex: none; width: auto; min-width: 84px }
+dialog .amt > .unit-select { flex: none; width: 112px }
+
+/* Cohesive states and surface treatment */
+label { color: var(--text); font-size: 13px; font-weight: 600 }
+input, select, textarea { min-height: 44px; border-color: var(--line); border-radius: 10px; background-color: var(--surface); transition: border-color .16s, box-shadow .16s, background-color .16s }
+input::placeholder, textarea::placeholder { color: color-mix(in srgb, var(--mute) 82%, transparent) }
+input:focus, select:focus, textarea:focus { border-color: var(--acc); box-shadow: var(--focus) }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--acc) }
+.select:not([multiple]), select:not([multiple]):not([size]) {
+  min-width: 0;
+  max-width: 100%;
+  padding-right: 40px;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235f6d66' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  cursor: pointer;
+}
+select:hover:not(:disabled) { border-color: color-mix(in srgb, var(--acc) 48%, var(--line)) }
+select:disabled { cursor: not-allowed; opacity: .65 }
+select option, select optgroup { background: var(--surface); color: var(--text) }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) select:not([multiple]):not([size]) { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23b2c0b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E") }
+}
+:root[data-theme="dark"] select:not([multiple]):not([size]) { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23b2c0b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E") }
+select[multiple], select[size] { padding: 8px 12px }
+.btn { min-height: 42px; border-radius: 10px; box-shadow: none; transition: background-color .16s, border-color .16s, color .16s, box-shadow .16s, transform .16s }
+.btn:not(:disabled):hover { background: var(--acc-hover) }
+.btn.ghost { box-shadow: none; background: var(--surface) }
+.btn.ghost:not(:disabled):hover { background: var(--panel); border-color: color-mix(in srgb, var(--acc) 35%, var(--line)) }
+.btn:active:not(:disabled) { transform: translateY(1px) }
+.card { border-color: var(--line); border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--shadow-sm) }
+.stat { transition: border-color .18s, box-shadow .18s }
+.stat:hover, .card:hover { border-color: color-mix(in srgb, var(--acc) 32%, var(--line)) }
+.pill { display: inline-flex; align-items: center; min-height: 24px; padding: 3px 9px; line-height: 1.2 }
+.pill.out { background: var(--badbg) }
+.tw { border-color: var(--line); border-radius: var(--radius-md); background: var(--surface) }
+th { color: var(--text); font-weight: 650 }
+td { color: var(--text) }
+.ov { background: rgba(10, 24, 18, .48); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px) }
+dialog { border-radius: 18px; background: var(--surface); box-shadow: var(--shadow-md) }
+#toast { border-radius: 12px; box-shadow: var(--shadow-md); font-weight: 600 }
+
+/* Prevent long labels and controls from widening any page. */
+main, .page, .card, .bar, .stats, .grid2, .dash-row, .row, dialog, .ov { min-width: 0; max-width: 100% }
+.bar > *, .row > *, .dash-list-head > *, .dash-row > * { min-width: 0; max-width: 100% }
+input, select, textarea { min-width: 0; max-width: 100% }
+img, video, canvas, svg { max-width: 100% }
+td.act button, td.act .btn { white-space: normal }
+
+@media (max-width: 760px) {
+  .an-chart { padding-inline: 8px }
+  .an-col small { display: none }
+  .an-line-chart { grid-template-columns: 68px minmax(0, 1fr); grid-template-rows: 190px 24px; padding-right: 8px }
+  .an-line-y-axis, .an-line-x-axis { font-size: 10px }
+  .an-line-x-label.hide-mobile { display: none }
+  .dash-list-head .link, .dash-qty, .dash-amount { white-space: normal; overflow-wrap: anywhere; text-align: right }
+}
+
+@media (max-width: 760px) {
+  .btn.sm { min-height: 42px }
+}
+
+/* Shared option-list controls use the same menu surface as the New Sale picker. */
+.bar-select { flex: 0 1 220px; min-width: 160px; max-width: 100% }
+.bar-select input, .home-unit input, .unit-select input { width: 100% }
+.home-unit { flex: 0 0 116px; min-width: 0 }
+.products-table table { table-layout: fixed }
+.products-table th, .products-table td { padding: 9px 8px; font-size: 13px }
+.products-table th:first-child { width: 20% }
+.products-table th:nth-child(2) { width: 10% }
+.products-table th:nth-child(3) { width: 8% }
+.products-table th:nth-child(4) { width: 7% }
+.products-table th:nth-child(5), .products-table th:nth-child(6), .products-table th:nth-child(7) { width: 9% }
+.products-table th:nth-child(8) { width: 6% }
+.products-table th:nth-child(9) { width: 8% }
+.products-table th:last-child { width: 14% }
+.products-table td.main { font-size: 14px }
+.products-table .product-actions { display: flex; flex-direction: column; gap: 5px }
+.products-table .product-actions .btn { width: 100%; padding-inline: 6px; min-height: 34px }
+
+@media (max-width: 1000px) {
+  .products-table { border: 0; overflow: visible }
+  .products-table table, .products-table tbody, .products-table tr, .products-table td { display: block; width: 100% }
+  .products-table thead { display: none }
+  .products-table tr { border: 1px solid var(--line); border-radius: 12px; padding: 6px 14px; margin-bottom: 10px }
+  .products-table td { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 7px 0; border: 0; text-align: right }
+  .products-table td::before { content: attr(data-label); color: var(--mute); font-size: 13px; text-align: left }
+  .products-table td.main { justify-content: flex-start; text-align: left; font-size: 16px }
+  .products-table td.main::before, .products-table td.act::before { content: none }
+  .products-table td.act { justify-content: flex-end; padding-top: 10px; border-top: 1px solid var(--line); margin-top: 4px }
+  .products-table .product-actions { flex-direction: row; width: 100%; justify-content: flex-end }
+  .products-table .product-actions .btn { width: auto; min-width: 76px; min-height: 40px }
+}
+
+@media (max-width: 760px) {
+  .bar-select { flex: 1 1 100%; min-width: 0 }
+  .home-unit { flex: 1 1 105px }
+  .products-table .product-actions { flex-direction: row; width: 100%; justify-content: flex-end }
+  .products-table .product-actions .btn { width: auto; min-width: 76px }
+}
